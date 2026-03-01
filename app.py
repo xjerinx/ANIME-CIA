@@ -358,6 +358,11 @@ def request_clear_trending_only():
     st.session_state.trend_selected_idx = None
 
 
+# ✅ NEW: clear only the search widget
+def request_clear_search_only():
+    st.session_state.clear_search = True
+
+
 # -----------------------------
 # Sidebar: Search (typeahead)
 # -----------------------------
@@ -389,6 +394,7 @@ if chosen_name:
 
     if st.sidebar.button("✅ Use this anime", use_container_width=True):
         request_clear_trending_only()
+        request_clear_search_only()  # ✅ clears the searchbar after selecting
         st.session_state.selected_anime = chosen_name
         st.rerun()
 
@@ -401,7 +407,6 @@ st.sidebar.subheader("🔥 Top Trending (Top 6)")
 
 trending6 = top_trending(anime, n=min(6, len(anime)))
 
-# Clear trending checkbox values BEFORE they are created
 if st.session_state.clear_trending:
     for i in range(6):
         st.session_state[f"trend_cb_{i}"] = False
@@ -444,7 +449,6 @@ for i, row in enumerate(trending6.itertuples(index=False)):
             unsafe_allow_html=True,
         )
 
-        # ✅ FIX: don't pass "value=" while also setting st.session_state[k]
         k = f"trend_cb_{i}"
         if k not in st.session_state:
             st.session_state[k] = (st.session_state.trend_selected_idx == i)
