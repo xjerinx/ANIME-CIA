@@ -22,7 +22,7 @@ st.set_page_config(page_title="Anime Recommender", page_icon="🎌", layout="wid
 # Theme toggle (Main page can be dark/light)
 # Sidebar ALWAYS dark, search input ALWAYS black
 # -----------------------------
-dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=True)
+dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
 
 BASE_SIDEBAR_CSS = """
 <style>
@@ -713,4 +713,5 @@ with tab2:
             """,
             unsafe_allow_html=True,
         )
+
 
