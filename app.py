@@ -22,6 +22,7 @@ st.set_page_config(page_title="Anime Recommender", page_icon="🎌", layout="wid
 # Theme toggle (Main page can be dark/light)
 # Sidebar ALWAYS dark, search input ALWAYS black
 # -----------------------------
+# ✅ FIX: toggle can break on Streamlit Cloud older versions, checkbox works everywhere
 dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
 
 BASE_SIDEBAR_CSS = """
@@ -334,21 +335,17 @@ def shorten_title(title: str, max_len: int = 20) -> str:
 if "selected_anime" not in st.session_state:
     st.session_state.selected_anime = None
 
-# clear selectbox safely BEFORE widget instantiation
 if "clear_search" not in st.session_state:
     st.session_state.clear_search = False
 
-# clear trending safely BEFORE checkboxes are created
 if "clear_trending" not in st.session_state:
     st.session_state.clear_trending = False
 
-# single selected trending index (radio-like)
 if "trend_selected_idx" not in st.session_state:
     st.session_state.trend_selected_idx = None
 
 
 def request_clear_all():
-    # do NOT directly set widget keys here (might be after instantiation)
     st.session_state.selected_anime = None
     st.session_state.clear_search = True
     st.session_state.clear_trending = True
@@ -363,11 +360,9 @@ def request_clear_trending_only():
 
 # -----------------------------
 # Sidebar: Search (typeahead)
-# When selecting from search -> clears trending selection
 # -----------------------------
 st.sidebar.header("🔎 Search Anime")
 
-# clear search BEFORE widget creation
 if st.session_state.clear_search:
     st.session_state["anime_select"] = None
     st.session_state.clear_search = False
@@ -393,15 +388,13 @@ if chosen_name:
         st.sidebar.markdown(f"[Open on MAL]({mal_url})")
 
     if st.sidebar.button("✅ Use this anime", use_container_width=True):
-        # Selecting from search clears trending
         request_clear_trending_only()
         st.session_state.selected_anime = chosen_name
         st.rerun()
 
 
 # -----------------------------
-# Sidebar: Top 6 Trending (compact, aligned, checkbox below poster)
-# Single-select behavior, hover full title
+# Sidebar: Top 6 Trending
 # -----------------------------
 st.sidebar.divider()
 st.sidebar.subheader("🔥 Top Trending (Top 6)")
@@ -411,21 +404,16 @@ trending6 = top_trending(anime, n=min(6, len(anime)))
 # Clear trending checkbox values BEFORE they are created
 if st.session_state.clear_trending:
     for i in range(6):
-        k = f"trend_cb_{i}"
-        st.session_state[k] = False
+        st.session_state[f"trend_cb_{i}"] = False
     st.session_state.clear_trending = False
 
 cols = st.sidebar.columns(3, gap="small")
 
 
 def on_trend_select(i: int, name: str):
-    # Radio behavior: check i, uncheck all others
     for j in range(6):
         st.session_state[f"trend_cb_{j}"] = (j == i)
     st.session_state.trend_selected_idx = i
-
-    # Selecting trending DOES NOT need to touch search widget
-    # (avoid widget-state errors)
     st.session_state.selected_anime = name
 
 
@@ -456,10 +444,14 @@ for i, row in enumerate(trending6.itertuples(index=False)):
             unsafe_allow_html=True,
         )
 
+        # ✅ FIX: don't pass "value=" while also setting st.session_state[k]
+        k = f"trend_cb_{i}"
+        if k not in st.session_state:
+            st.session_state[k] = (st.session_state.trend_selected_idx == i)
+
         st.checkbox(
             " ",
-            key=f"trend_cb_{i}",
-            value=(st.session_state.trend_selected_idx == i),
+            key=k,
             on_change=on_trend_select,
             args=(i, name),
             label_visibility="collapsed",
@@ -558,7 +550,7 @@ with tab1:
 
 
 # -----------------------------
-# Dashboard / EDA tab (5 clean graphs + short explanation)
+# Dashboard / EDA tab
 # -----------------------------
 with tab2:
     st.subheader("📊 Dashboard / EDA (Clean)")
@@ -713,5 +705,3 @@ with tab2:
             """,
             unsafe_allow_html=True,
         )
-
-
