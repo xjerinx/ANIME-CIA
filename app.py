@@ -170,10 +170,8 @@ def fetch_media(anime_name):
 
 
 # -----------------------------
-# CLEAN UI THEMES - Professional, No Excessive Colors
+# CLEAN UI THEMES - Dark Mode Only (No White)
 # -----------------------------
-dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
-
 # Base CSS that applies to both themes
 BASE_CSS = """
 <style>
@@ -187,6 +185,16 @@ BASE_CSS = """
   /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
+  }
+  
+  /* Main app background - always dark */
+  .stApp {
+    background: #0f1219;
+  }
+  
+  .block-container {
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
   }
   
   /* Sidebar styling */
@@ -261,11 +269,11 @@ BASE_CSS = """
   
   /* Explanation box */
   .explain-box{
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
+    background: #1f2937;
+    border: 1px solid #374151;
     border-radius: 8px;
     padding: 16px;
-    color: #4b5563;
+    color: #9ca3af;
     font-size: 0.9rem;
     height: 100%;
   }
@@ -273,13 +281,13 @@ BASE_CSS = """
   /* Genre tags */
   .genre-tag {
     display: inline-block;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
+    background: #1f2937;
+    border: 1px solid #374151;
     border-radius: 16px;
     padding: 4px 12px;
     margin: 0 4px 4px 0;
     font-size: 0.8rem;
-    color: #4b5563;
+    color: #9ca3af;
   }
   
   /* Divider styling */
@@ -287,232 +295,163 @@ BASE_CSS = """
     margin: 30px 0;
     border: none;
     height: 1px;
-    background: #e5e7eb;
+    background: #374151;
   }
   
   /* Button styling */
   .stButton button {
     border-radius: 8px !important;
-    border: 1px solid #d1d5db !important;
-    background: white !important;
-    color: #1f2937 !important;
+    border: 1px solid #374151 !important;
+    background: #1f2937 !important;
+    color: #e5e7eb !important;
     font-weight: 500 !important;
     font-size: 14px !important;
     padding: 8px 16px !important;
     transition: all 0.2s !important;
   }
   .stButton button:hover {
-    background: #f9fafb !important;
-    border-color: #9ca3af !important;
+    background: #2d3748 !important;
+    border-color: #4b5563 !important;
+  }
+  
+  /* Small X button for clear */
+  .clear-x-btn {
+    background: #374151;
+    color: #9ca3af;
+    border: none;
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .clear-x-btn:hover {
+    background: #4b5563;
+    color: #e5e7eb;
   }
   
   /* Selectbox styling */
   div[data-baseweb="select"] div {
     border-radius: 8px !important;
-    border: 1px solid #d1d5db !important;
+    border: 1px solid #374151 !important;
+    background: #1f2937 !important;
+    color: #e5e7eb !important;
   }
   
   /* Slider styling */
   div[data-testid="stSlider"] label {
-    color: #6b7280 !important;
+    color: #9ca3af !important;
   }
   
   /* Tabs styling */
   .stTabs [data-baseweb="tab-list"] {
     gap: 8px;
+    background: #1f2937;
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid #374151;
   }
   .stTabs [data-baseweb="tab"] {
-    border-radius: 8px !important;
+    border-radius: 6px !important;
     padding: 8px 16px !important;
     font-weight: 500 !important;
+    color: #9ca3af !important;
+  }
+  .stTabs [aria-selected="true"] {
+    background: #2d3748 !important;
+    color: #e5e7eb !important;
   }
   
-  /* DataFrame styling */
+  /* Headers */
+  h1, h2, h3, h4, h5, h6 {
+    color: #e5e7eb;
+    font-weight: 600;
+  }
+  
+  h1 {
+    color: #60a5fa !important;
+  }
+  
+  .stCaption, p, li {
+    color: #9ca3af;
+  }
+  
+  a {
+    color: #60a5fa;
+    text-decoration: none;
+  }
+  
+  a:hover {
+    text-decoration: underline;
+  }
+  
+  /* Metrics */
+  div[data-testid="stMetric"] {
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    padding: 16px;
+  }
+  
+  div[data-testid="stMetric"] label {
+    color: #9ca3af !important;
+  }
+  
+  div[data-testid="stMetric"] div {
+    color: #e5e7eb !important;
+    font-weight: 600 !important;
+  }
+  
+  /* DataFrames */
   .stDataFrame, [data-testid="stDataFrame"] {
     border-radius: 8px !important;
-    border: 1px solid #e5e7eb !important;
+    border: 1px solid #374151 !important;
+    background: #1f2937 !important;
+  }
+  
+  /* Info/Warning boxes */
+  .stAlert {
+    background: #1f2937 !important;
+    border: 1px solid #374151 !important;
+    color: #9ca3af !important;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #1f2937;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+  }
+  
+  /* Title with X button container */
+  .title-with-clear {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .title-with-clear h3 {
+    margin: 0;
   }
 </style>
 """
-
-# Dark Mode Theme
-if dark_mode:
-    st.markdown(
-        """
-        <style>
-          .stApp {
-            background: #111827;
-            color: #e5e7eb;
-          }
-          
-          .block-container {
-            padding-top: 1.5rem;
-            padding-bottom: 2rem;
-          }
-
-          h1, h2, h3, h4, h5, h6 {
-            color: #e5e7eb;
-            font-weight: 600;
-          }
-          
-          h1 {
-            color: #60a5fa !important;
-          }
-          
-          .stCaption, p, li {
-            color: #9ca3af;
-          }
-          
-          a {
-            color: #60a5fa;
-            text-decoration: none;
-          }
-          
-          a:hover {
-            text-decoration: underline;
-          }
-          
-          div[data-testid="stMetric"] {
-            background: #1f2937;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 16px;
-          }
-          
-          div[data-testid="stMetric"] label {
-            color: #9ca3af !important;
-          }
-          
-          div[data-testid="stMetric"] div {
-            color: #e5e7eb !important;
-            font-weight: 600 !important;
-          }
-          
-          /* Light mode overrides for dark mode */
-          .explain-box {
-            background: #1f2937;
-            border-color: #374151;
-            color: #9ca3af;
-          }
-          
-          .genre-tag {
-            background: #1f2937;
-            border-color: #374151;
-            color: #9ca3af;
-          }
-          
-          .custom-divider {
-            background: #374151;
-          }
-          
-          .stButton button {
-            background: #1f2937 !important;
-            border-color: #374151 !important;
-            color: #e5e7eb !important;
-          }
-          .stButton button:hover {
-            background: #2d3748 !important;
-            border-color: #4b5563 !important;
-          }
-          
-          .stDataFrame, [data-testid="stDataFrame"] {
-            border-color: #374151 !important;
-            background: #1f2937 !important;
-          }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# Light Mode Theme - Clean and Professional
-else:
-    st.markdown(
-        """
-        <style>
-          .stApp {
-            background: #ffffff;
-            color: #1f2937;
-          }
-          
-          .block-container {
-            padding-top: 1.5rem;
-            padding-bottom: 2rem;
-          }
-
-          h1, h2, h3, h4, h5, h6 {
-            color: #1f2937;
-            font-weight: 600;
-          }
-          
-          h1 {
-            color: #2563eb !important;
-          }
-          
-          .stCaption, p, li {
-            color: #6b7280;
-          }
-          
-          a {
-            color: #2563eb;
-            text-decoration: none;
-          }
-          
-          a:hover {
-            text-decoration: underline;
-          }
-          
-          div[data-testid="stMetric"] {
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 16px;
-          }
-          
-          div[data-testid="stMetric"] label {
-            color: #6b7280 !important;
-          }
-          
-          div[data-testid="stMetric"] div {
-            color: #1f2937 !important;
-            font-weight: 600 !important;
-          }
-          
-          /* Explanation box in light mode */
-          .explain-box {
-            background: #f9fafb;
-            border-color: #e5e7eb;
-            color: #6b7280;
-          }
-          
-          /* Genre tags in light mode */
-          .genre-tag {
-            background: #f9fafb;
-            border-color: #e5e7eb;
-            color: #6b7280;
-          }
-          
-          /* Custom scrollbar */
-          ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-          }
-          
-          ::-webkit-scrollbar-track {
-            background: #f3f4f6;
-          }
-          
-          ::-webkit-scrollbar-thumb {
-            background: #9ca3af;
-            border-radius: 4px;
-          }
-          
-          ::-webkit-scrollbar-thumb:hover {
-            background: #6b7280;
-          }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
 
 # Apply base CSS
 st.markdown(BASE_CSS, unsafe_allow_html=True)
@@ -530,7 +469,7 @@ else:
 st.markdown("""
     <div style='text-align: center; margin-bottom: 30px;'>
         <h1 style='font-size: 2.5rem; margin-bottom: 5px;'>🎌 ANIME RECOMMENDER</h1>
-        <p style='color: #6b7280; font-size: 1rem;'>Discover your next favorite anime</p>
+        <p style='color: #9ca3af; font-size: 1rem;'>Discover your next favorite anime</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -845,11 +784,18 @@ with tab1:
 
     st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)
     
-    st.subheader("📌 Selected Anime")
-
+    # Selected Anime section with X clear button
     if st.session_state.selected_anime is not None:
-        if st.button("❌ Clear Selection", use_container_width=True):
-            request_clear_all()
+        # Create a container with title and X button
+        col_title, col_x = st.columns([20, 1])
+        with col_title:
+            st.subheader("📌 Selected Anime")
+        with col_x:
+            # Using columns to position the X button
+            x_col1, x_col2, x_col3 = st.columns([1, 1, 1])
+            with x_col2:
+                if st.button("✕", key="clear_x_btn", help="Clear selection"):
+                    request_clear_all()
 
     if st.session_state.selected_anime is None:
         st.info("👆 Select an anime from the sidebar to get recommendations")
@@ -858,7 +804,7 @@ with tab1:
         row = anime[anime["name"] == selected_name].iloc[0]
 
         # Display anime title
-        st.markdown(f"<h3>{selected_name}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='margin-top: 0;'>{selected_name}</h3>", unsafe_allow_html=True)
         
         # Create two columns for poster and info
         left, right = st.columns([1, 2])
@@ -979,11 +925,15 @@ with tab2:
     col1, col2 = st.columns([3, 1])
     with col1:
         st.markdown("#### Rating Distribution")
-        fig = plt.figure(figsize=(8, 4))
+        fig = plt.figure(figsize=(8, 4), facecolor='#0f1219')
+        ax = fig.add_subplot(111)
+        ax.set_facecolor('#1f2937')
         ratings = pd.to_numeric(eda_df["rating"], errors="coerce").dropna()
-        sns.histplot(ratings, bins=20, kde=True, color='#2563eb', alpha=0.6)
-        plt.xlabel("Rating")
-        plt.ylabel("Count")
+        sns.histplot(ratings, bins=20, kde=True, color='#60a5fa', alpha=0.6)
+        plt.xlabel("Rating", color='#9ca3af')
+        plt.ylabel("Count", color='#9ca3af')
+        plt.tick_params(colors='#9ca3af')
+        plt.grid(alpha=0.2, color='#374151')
         st.pyplot(fig)
         plt.close()
     with col2:
@@ -1004,10 +954,14 @@ with tab2:
     with col1:
         st.markdown("#### Average Rating by Type")
         temp = eda_df.dropna(subset=["rating"]).groupby("type")["rating"].mean().sort_values(ascending=False)
-        fig = plt.figure(figsize=(8, 4))
-        plt.bar(temp.index.astype(str), temp.values, color='#2563eb', alpha=0.6)
-        plt.xticks(rotation=35, ha='right')
-        plt.ylabel("Avg Rating")
+        fig = plt.figure(figsize=(8, 4), facecolor='#0f1219')
+        ax = fig.add_subplot(111)
+        ax.set_facecolor('#1f2937')
+        plt.bar(temp.index.astype(str), temp.values, color='#60a5fa', alpha=0.6)
+        plt.xticks(rotation=35, ha='right', color='#9ca3af')
+        plt.ylabel("Avg Rating", color='#9ca3af')
+        plt.tick_params(colors='#9ca3af')
+        plt.grid(axis='y', alpha=0.2, color='#374151')
         st.pyplot(fig)
         plt.close()
     with col2:
@@ -1028,11 +982,15 @@ with tab2:
     with col1:
         st.markdown("#### Rating vs Popularity")
         temp = eda_df.dropna(subset=["rating", "members"]).copy()
-        fig = plt.figure(figsize=(8, 4))
-        plt.scatter(temp["members"], temp["rating"], alpha=0.5, color='#2563eb', s=20)
+        fig = plt.figure(figsize=(8, 4), facecolor='#0f1219')
+        ax = fig.add_subplot(111)
+        ax.set_facecolor('#1f2937')
+        plt.scatter(temp["members"], temp["rating"], alpha=0.5, color='#60a5fa', s=20)
         plt.xscale("log")
-        plt.xlabel("Members (log scale)")
-        plt.ylabel("Rating")
+        plt.xlabel("Members (log scale)", color='#9ca3af')
+        plt.ylabel("Rating", color='#9ca3af')
+        plt.tick_params(colors='#9ca3af')
+        plt.grid(alpha=0.2, color='#374151')
         st.pyplot(fig)
         plt.close()
     with col2:
@@ -1054,9 +1012,13 @@ with tab2:
         st.markdown("#### Correlation Matrix")
         corr_df = eda_df[["rating", "members", "episodes"]].copy().dropna()
         if len(corr_df) >= 3:
-            fig = plt.figure(figsize=(6.5, 4))
+            fig = plt.figure(figsize=(6.5, 4), facecolor='#0f1219')
+            ax = fig.add_subplot(111)
+            ax.set_facecolor('#1f2937')
             corr = corr_df.corr()
-            sns.heatmap(corr, annot=True, cmap='coolwarm', fmt=".2f", linewidths=1)
+            sns.heatmap(corr, annot=True, cmap='coolwarm', fmt=".2f", linewidths=1, 
+                       cbar_kws={'label': 'Correlation'})
+            plt.tick_params(colors='#9ca3af')
             st.pyplot(fig)
             plt.close()
         else:
@@ -1090,9 +1052,13 @@ with tab2:
         top_g = genres.value_counts().head(15)
 
         if not top_g.empty:
-            fig = plt.figure(figsize=(8, 4))
-            plt.barh(top_g.index[::-1], top_g.values[::-1], color='#2563eb', alpha=0.6)
-            plt.xlabel("Count")
+            fig = plt.figure(figsize=(8, 4), facecolor='#0f1219')
+            ax = fig.add_subplot(111)
+            ax.set_facecolor('#1f2937')
+            plt.barh(top_g.index[::-1], top_g.values[::-1], color='#60a5fa', alpha=0.6)
+            plt.xlabel("Count", color='#9ca3af')
+            plt.tick_params(colors='#9ca3af')
+            plt.grid(axis='x', alpha=0.2, color='#374151')
             st.pyplot(fig)
             plt.close()
         else:
