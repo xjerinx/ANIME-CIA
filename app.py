@@ -37,12 +37,6 @@ def get_youtube_api_key():
 # Initialize YouTube API key
 YOUTUBE_API_KEY = get_youtube_api_key()
 
-# Debug: Show API key status in sidebar
-if YOUTUBE_API_KEY:
-    st.sidebar.success("✅ YouTube API Connected")
-else:
-    st.sidebar.warning("⚠️ YouTube API key not found. Using basic search.")
-
 
 # -----------------------------
 # YouTube API Functions
@@ -61,7 +55,7 @@ def search_youtube_trailer(anime_name):
         search_queries = [
             f"{anime_name} official trailer",
             f"{anime_name} anime trailer",
-            f"{anime_name} PV",  # PV = Promotional Video
+            f"{anime_name} PV",
             anime_name
         ]
         
@@ -125,290 +119,6 @@ def fetch_youtube_trailer_fallback(anime_name):
 
 
 # -----------------------------
-# Theme toggle and enhanced UI CSS
-# -----------------------------
-dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
-
-BASE_SIDEBAR_CSS = """
-<style>
-  /* Sidebar always dark */
-  section[data-testid="stSidebar"]{
-    background:#0a0e16 !important;
-    border-right:1px solid rgba(255,255,255,.12) !important;
-  }
-  section[data-testid="stSidebar"] *{ color:#e5e7eb !important; }
-  section[data-testid="stSidebar"] .stCaption,
-  section[data-testid="stSidebar"] p,
-  section[data-testid="stSidebar"] small{
-    color:#9ca3af !important;
-  }
-
-  /* Sidebar input always black */
-  section[data-testid="stSidebar"] div[data-baseweb="input"] input{
-    background-color:#111827 !important;
-    color:#e5e7eb !important;
-    border:1px solid rgba(255,255,255,0.16) !important;
-    border-radius:12px !important;
-  }
-  section[data-testid="stSidebar"] div[data-baseweb="input"] input::placeholder{
-    color:#9ca3af !important;
-  }
-
-  /* Compact trending cards */
-  .trend-card{
-    background: rgba(17,24,39,0.42);
-    border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 12px;
-    padding: 6px;
-    margin-bottom: 8px;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  .trend-card:hover{
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-    border-color: rgba(255,255,255,0.2);
-  }
-  .trend-img{
-    width:100%;
-    height:110px;
-    border-radius:10px;
-    overflow:hidden;
-    background: rgba(255,255,255,0.06);
-  }
-  .trend-img img{
-    width:100%;
-    height:110px;
-    object-fit:cover;
-    display:block;
-    transition: transform 0.3s;
-  }
-  .trend-img img:hover{
-    transform: scale(1.05);
-  }
-  .trend-title{
-    font-size: 0.78rem;
-    line-height: 1.1;
-    color: #e5e7eb;
-    text-align:center;
-    white-space: nowrap;
-    overflow:hidden;
-    text-overflow: ellipsis;
-    margin-top: 4px;
-    margin-bottom: 2px;
-  }
-  
-  /* Video container styling */
-  .video-container {
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-    margin: 20px 0;
-    border: 1px solid rgba(255,255,255,0.1);
-  }
-  
-  /* Explanation box */
-  .explain-box{
-    background: rgba(17,24,39,0.55);
-    border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 14px;
-    padding: 10px 12px;
-    color: #9ca3af;
-    font-size: 0.92rem;
-    backdrop-filter: blur(5px);
-  }
-  
-  /* Custom metric cards */
-  .custom-metric {
-    background: linear-gradient(135deg, rgba(17,24,39,0.8) 0%, rgba(17,24,39,0.6) 100%);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 16px;
-    padding: 15px;
-    text-align: center;
-    backdrop-filter: blur(5px);
-  }
-  .metric-label {
-    font-size: 0.8rem;
-    color: #9ca3af;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  .metric-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #e5e7eb;
-  }
-  
-  /* Anime title styling */
-  .anime-title {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #e5e7eb;
-    margin-bottom: 5px;
-  }
-  .anime-subtitle {
-    font-size: 0.9rem;
-    color: #9ca3af;
-    font-style: italic;
-  }
-  
-  /* Genre tags */
-  .genre-tag {
-    display: inline-block;
-    background: rgba(139, 92, 246, 0.2);
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    border-radius: 20px;
-    padding: 4px 12px;
-    margin: 0 5px 5px 0;
-    font-size: 0.8rem;
-    color: #c4b5fd;
-  }
-  
-  /* Divider styling */
-  .custom-divider {
-    margin: 25px 0;
-    border: none;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  }
-</style>
-"""
-
-if dark_mode:
-    st.markdown(
-        """
-        <style>
-          :root{
-            --bg:#0b0f19;
-            --text:#e5e7eb;
-            --muted:#9ca3af;
-            --border:rgba(255,255,255,.12);
-          }
-
-          .stApp{background:var(--bg); color:var(--text);}
-          .block-container{padding-top:1.2rem;padding-bottom:2rem;}
-
-          h1,h2,h3,h4,h5,h6{color:var(--text);}
-          .stCaption,p,li{color:var(--muted);}
-          a{color:#93c5fd;}
-
-          div[data-testid="stMetric"]{
-            background:rgba(17,24,39,.9);
-            border:1px solid var(--border);
-            border-radius:16px;
-            padding:12px;
-            box-shadow:0 10px 30px rgba(0,0,0,0.35);
-            transition: transform 0.2s;
-          }
-          div[data-testid="stMetric"]:hover{
-            transform: translateY(-2px);
-            box-shadow:0 15px 35px rgba(0,0,0,0.4);
-          }
-
-          .stDataFrame, [data-testid="stDataFrame"]{
-            border-radius: 14px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-            background: rgba(17,24,39,0.6);
-            backdrop-filter: blur(5px);
-          }
-          
-          /* Button styling */
-          .stButton button {
-            border-radius: 30px !important;
-            border: none !important;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
-            color: white !important;
-            font-weight: 600 !important;
-            transition: all 0.3s !important;
-          }
-          .stButton button:hover {
-            transform: scale(1.02) !important;
-            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4) !important;
-          }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-else:
-    st.markdown(
-        """
-        <style>
-          :root{
-            --bg:#f2f6ff;
-            --text:#0f172a;
-            --muted:#475569;
-            --border:rgba(15,23,42,.10);
-          }
-
-          .stApp{background:var(--bg); color:var(--text);}
-          .block-container{padding-top:1.2rem;padding-bottom:2rem;}
-
-          h1,h2,h3,h4,h5,h6{color:var(--text);}
-          .stCaption,p,li{color:var(--muted);}
-          a{color:#2563eb;}
-
-          div[data-testid="stMetric"]{
-            background:rgba(255,255,255,0.92);
-            border:1px solid var(--border);
-            border-radius:16px;
-            padding:12px;
-            box-shadow:0 10px 24px rgba(15,23,42,.06);
-            transition: transform 0.2s;
-          }
-          div[data-testid="stMetric"]:hover{
-            transform: translateY(-2px);
-            box-shadow:0 15px 30px rgba(15,23,42,.1);
-          }
-
-          .stDataFrame, [data-testid="stDataFrame"]{
-            border-radius: 14px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-            background: rgba(255,255,255,0.95);
-          }
-          
-          /* Button styling */
-          .stButton button {
-            border-radius: 30px !important;
-            border: none !important;
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%) !important;
-            color: white !important;
-            font-weight: 600 !important;
-            transition: all 0.3s !important;
-          }
-          .stButton button:hover {
-            transform: scale(1.02) !important;
-            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3) !important;
-          }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# Apply always-on sidebar/trending css
-st.markdown(BASE_SIDEBAR_CSS, unsafe_allow_html=True)
-
-
-# -----------------------------
-# Header with animated gradient
-# -----------------------------
-st.markdown("""
-    <div style='text-align: center; margin-bottom: 30px;'>
-        <h1 style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                   -webkit-background-clip: text; 
-                   -webkit-text-fill-color: transparent;
-                   font-size: 3rem;
-                   margin-bottom: 5px;'>
-            🎌 ANIME RECOMMENDER
-        </h1>
-        <p style='color: #9ca3af; font-size: 1.1rem;'>
-            Content-based recommendations with integrated YouTube trailers
-        </p>
-    </div>
-""", unsafe_allow_html=True)
-
-
-# -----------------------------
 # Media fetch (Poster + MAL + Trailer) via Jikan API
 # -----------------------------
 @st.cache_data(ttl=24 * 3600)
@@ -457,6 +167,545 @@ def fetch_media(anime_name):
         print(f"Error fetching media: {e}")
         # Last resort - try fallback
         return poster, mal_url, fetch_youtube_trailer_fallback(anime_name)
+
+
+# -----------------------------
+# ENHANCED UI THEMES - Dark & Light Mode with Modern Design
+# -----------------------------
+dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
+
+# Base CSS that applies to both themes
+BASE_CSS = """
+<style>
+  /* Import Google Fonts */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  
+  * {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Sidebar always dark with glass effect */
+  section[data-testid="stSidebar"]{
+    background: linear-gradient(180deg, #0a0e1a 0%, #111827 100%) !important;
+    border-right: 1px solid rgba(255,255,255,0.08) !important;
+    backdrop-filter: blur(10px);
+  }
+  section[data-testid="stSidebar"] *{ color:#e5e7eb !important; }
+  section[data-testid="stSidebar"] .stCaption,
+  section[data-testid="stSidebar"] p,
+  section[data-testid="stSidebar"] small{
+    color:#9ca3af !important;
+  }
+
+  /* Sidebar input styling */
+  section[data-testid="stSidebar"] div[data-baseweb="input"] input{
+    background-color: rgba(17,24,39,0.8) !important;
+    color:#e5e7eb !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: 30px !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s;
+  }
+  section[data-testid="stSidebar"] div[data-baseweb="input"] input:focus{
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+  }
+  section[data-testid="stSidebar"] div[data-baseweb="input"] input::placeholder{
+    color:#6b7280 !important;
+  }
+
+  /* Trending cards */
+  .trend-card{
+    background: linear-gradient(135deg, rgba(17,24,39,0.5) 0%, rgba(17,24,39,0.3) 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 8px;
+    margin-bottom: 12px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .trend-card:hover{
+    transform: translateY(-4px);
+    box-shadow: 0 20px 30px -10px rgba(0,0,0,0.5);
+    border-color: rgba(99, 102, 241, 0.3);
+    background: linear-gradient(135deg, rgba(17,24,39,0.7) 0%, rgba(17,24,39,0.5) 100%);
+  }
+  
+  .trend-img{
+    width:100%;
+    height:120px;
+    border-radius:12px;
+    overflow:hidden;
+    background: rgba(255,255,255,0.03);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  }
+  .trend-img img{
+    width:100%;
+    height:120px;
+    object-fit:cover;
+    display:block;
+    transition: transform 0.5s;
+  }
+  .trend-img img:hover{
+    transform: scale(1.08);
+  }
+  .trend-title{
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #e5e7eb;
+    text-align:center;
+    white-space: nowrap;
+    overflow:hidden;
+    text-overflow: ellipsis;
+    margin-top: 8px;
+    margin-bottom: 4px;
+    letter-spacing: 0.3px;
+  }
+  
+  /* Video container */
+  .video-container {
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 30px 50px -20px rgba(0,0,0,0.5);
+    margin: 25px 0;
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.3s;
+  }
+  .video-container:hover {
+    box-shadow: 0 40px 60px -20px rgba(99, 102, 241, 0.3);
+    border-color: rgba(99, 102, 241, 0.3);
+  }
+  
+  /* Explanation box */
+  .explain-box{
+    background: linear-gradient(135deg, rgba(17,24,39,0.7) 0%, rgba(17,24,39,0.5) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 16px 18px;
+    color: #9ca3af;
+    font-size: 0.9rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 25px -10px rgba(0,0,0,0.3);
+    height: 100%;
+  }
+  
+  /* Custom metric cards */
+  .custom-metric {
+    background: linear-gradient(135deg, rgba(17,24,39,0.8) 0%, rgba(17,24,39,0.6) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 20px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 15px 30px -15px rgba(0,0,0,0.3);
+    transition: all 0.3s;
+  }
+  .custom-metric:hover {
+    transform: translateY(-5px);
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 25px 40px -20px rgba(99, 102, 241, 0.4);
+  }
+  
+  .metric-label {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+  .metric-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #e5e7eb;
+    line-height: 1.2;
+    background: linear-gradient(135deg, #fff 0%, #e5e7eb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  /* Anime title styling */
+  .anime-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 5px;
+    letter-spacing: -0.02em;
+  }
+  .anime-subtitle {
+    font-size: 0.95rem;
+    color: #9ca3af;
+    font-style: italic;
+  }
+  
+  /* Genre tags */
+  .genre-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 30px;
+    padding: 6px 16px;
+    margin: 0 6px 8px 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #a5b4fc;
+    backdrop-filter: blur(5px);
+    transition: all 0.2s;
+  }
+  .genre-tag:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%);
+    transform: translateY(-2px);
+    border-color: #6366f1;
+  }
+  
+  /* Divider styling */
+  .custom-divider {
+    margin: 35px 0;
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  }
+  
+  /* Button styling */
+  .stButton button {
+    border-radius: 40px !important;
+    border: none !important;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    font-size: 16px !important;
+    padding: 12px 24px !important;
+    box-shadow: 0 10px 20px -8px rgba(99, 102, 241, 0.3) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    letter-spacing: 0.5px;
+  }
+  .stButton button:hover {
+    transform: scale(1.02) translateY(-2px) !important;
+    box-shadow: 0 20px 30px -10px rgba(99, 102, 241, 0.5) !important;
+  }
+  .stButton button:active {
+    transform: scale(0.98) !important;
+  }
+  
+  /* Selectbox styling */
+  div[data-baseweb="select"] div {
+    border-radius: 30px !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    background: rgba(17,24,39,0.8) !important;
+    backdrop-filter: blur(5px);
+  }
+  
+  /* Slider styling */
+  div[data-testid="stSlider"] div[data-baseweb="slider"] div {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+  }
+  
+  /* Tabs styling */
+  button[data-baseweb="tab"] {
+    border-radius: 30px !important;
+    margin: 0 5px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s !important;
+  }
+  button[data-baseweb="tab"]:hover {
+    background: rgba(99, 102, 241, 0.1) !important;
+  }
+  button[aria-selected="true"] {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+    color: white !important;
+  }
+  
+  /* DataFrame styling */
+  .stDataFrame, [data-testid="stDataFrame"] {
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    background: rgba(17,24,39,0.4) !important;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 20px 40px -20px rgba(0,0,0,0.4) !important;
+  }
+  
+  /* Progress bar styling */
+  .stProgress div div {
+    background: linear-gradient(90deg, #6366f1, #8b5cf6) !important;
+    border-radius: 30px !important;
+  }
+  
+  /* Success/Warning/Info messages */
+  .stAlert {
+    border-radius: 30px !important;
+    border: none !important;
+    backdrop-filter: blur(5px);
+  }
+  
+  /* Checkbox styling */
+  .stCheckbox {
+    display: flex;
+    justify-content: center;
+  }
+</style>
+"""
+
+# Dark Mode Theme
+if dark_mode:
+    st.markdown(
+        """
+        <style>
+          :root{
+            --bg: linear-gradient(135deg, #0b0f1a 0%, #111827 100%);
+            --card-bg: rgba(17,24,39,0.5);
+            --text: #e5e7eb;
+            --text-light: #9ca3af;
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --border: rgba(99, 102, 241, 0.2);
+            --shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+          }
+
+          .stApp {
+            background: var(--bg);
+            color: var(--text);
+          }
+          
+          .block-container {
+            padding-top: 1.5rem;
+            padding-bottom: 2rem;
+          }
+
+          h1, h2, h3, h4, h5, h6 {
+            color: var(--text);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+          }
+          
+          h1 {
+            background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 3.2rem !important;
+          }
+          
+          .stCaption, p, li {
+            color: var(--text-light);
+          }
+          
+          a {
+            color: #818cf8;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-bottom: 1px dotted transparent;
+          }
+          
+          a:hover {
+            color: #a78bfa;
+            border-bottom-color: #a78bfa;
+          }
+          
+          div[data-testid="stMetric"] {
+            background: linear-gradient(135deg, rgba(17,24,39,0.8) 0%, rgba(17,24,39,0.6) 100%);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+          }
+          div[data-testid="stMetric"]:hover {
+            transform: translateY(-5px);
+            border-color: #6366f1;
+            box-shadow: 0 30px 60px -15px rgba(99, 102, 241, 0.3);
+          }
+          
+          div[data-testid="stMetric"] label {
+            color: #9ca3af !important;
+          }
+          
+          div[data-testid="stMetric"] div {
+            color: #e5e7eb !important;
+            font-weight: 700 !important;
+          }
+          
+          /* Custom scrollbar */
+          ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+          
+          ::-webkit-scrollbar-track {
+            background: rgba(17,24,39,0.4);
+            border-radius: 10px;
+          }
+          
+          ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: 10px;
+          }
+          
+          ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #818cf8, #a78bfa);
+          }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# Enhanced Light Mode Theme
+else:
+    st.markdown(
+        """
+        <style>
+          :root{
+            --bg: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --text: #1e293b;
+            --text-light: #475569;
+            --primary: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #7c3aed;
+            --accent: #f59e0b;
+            --border: rgba(79, 70, 229, 0.15);
+            --shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.15);
+          }
+
+          .stApp {
+            background: var(--bg);
+            color: var(--text);
+          }
+          
+          .block-container {
+            padding-top: 1.5rem;
+            padding-bottom: 2rem;
+          }
+
+          h1, h2, h3, h4, h5, h6 {
+            color: var(--text);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+          }
+          
+          h1 {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 3.2rem !important;
+          }
+          
+          .stCaption, p, li {
+            color: var(--text-light);
+          }
+          
+          a {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-bottom: 1px dotted transparent;
+          }
+          
+          a:hover {
+            color: #7c3aed;
+            border-bottom-color: #7c3aed;
+          }
+          
+          div[data-testid="stMetric"] {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+          }
+          div[data-testid="stMetric"]:hover {
+            transform: translateY(-5px);
+            border-color: #4f46e5;
+            box-shadow: 0 30px 60px -15px rgba(79, 70, 229, 0.2);
+          }
+          
+          div[data-testid="stMetric"] label {
+            color: #64748b !important;
+          }
+          
+          div[data-testid="stMetric"] div {
+            color: #1e293b !important;
+            font-weight: 700 !important;
+          }
+          
+          /* Dataframe in light mode */
+          .stDataFrame, [data-testid="stDataFrame"] {
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: 1px solid rgba(79, 70, 229, 0.1) !important;
+          }
+          
+          .stDataFrame td, .stDataFrame th {
+            color: #1e293b !important;
+          }
+          
+          /* Genre tags in light mode */
+          .genre-tag {
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(124, 58, 237, 0.08) 100%);
+            border: 1px solid rgba(79, 70, 229, 0.2);
+            color: #4f46e5;
+          }
+          .genre-tag:hover {
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%);
+          }
+          
+          /* Explanation box in light mode */
+          .explain-box {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(79, 70, 229, 0.1);
+            color: #475569;
+          }
+          
+          /* Custom scrollbar for light mode */
+          ::-webkit-scrollbar-track {
+            background: rgba(79, 70, 229, 0.05);
+          }
+          
+          ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+          }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# Apply base CSS
+st.markdown(BASE_CSS, unsafe_allow_html=True)
+
+# Show API status in sidebar
+if YOUTUBE_API_KEY:
+    st.sidebar.success("✅ YouTube API Connected")
+else:
+    st.sidebar.warning("⚠️ YouTube API key not found. Using basic search.")
+
+
+# -----------------------------
+# Header with animated gradient
+# -----------------------------
+st.markdown("""
+    <div style='text-align: center; margin-bottom: 30px;'>
+        <h1 style='font-size: 3.5rem; margin-bottom: 5px;'>
+            🎌 ANIME RECOMMENDER
+        </h1>
+        <p style='font-size: 1.2rem; opacity: 0.8; letter-spacing: 0.5px;'>
+            Discover your next favorite anime with AI-powered recommendations
+        </p>
+    </div>
+""", unsafe_allow_html=True)
 
 
 # -----------------------------
@@ -546,7 +795,7 @@ def build_tfidf_matrix(genres: pd.Series):
     return tfidf.fit_transform(genres)
 
 
-with st.spinner("Building TF-IDF vectors…"):
+with st.spinner("Building recommendation engine..."):
     X = build_tfidf_matrix(anime["genre"])
 
 
@@ -637,7 +886,7 @@ chosen_name = st.sidebar.selectbox(
 top_n = st.sidebar.slider("Number of recommendations", 5, 20, 10)
 
 if chosen_name:
-    poster_url, _, _ = fetch_media(chosen_name)  # Using _ for unused variables
+    poster_url, _, _ = fetch_media(chosen_name)
 
     if poster_url:
         st.sidebar.image(poster_url, width=140)
@@ -719,7 +968,7 @@ for i, row in enumerate(trending6.itertuples(index=False)):
 # -----------------------------
 st.sidebar.divider()
 st.sidebar.subheader("📊 Dashboard Filters")
-st.sidebar.caption("Affects EDA tab only")
+st.sidebar.caption("Affects Analytics tab only")
 
 type_filter = st.sidebar.multiselect(
     "Filter by type",
@@ -746,10 +995,84 @@ tab1, tab2 = st.tabs(["🎯 Recommendations", "📊 Analytics Dashboard"])
 
 
 # -----------------------------
-# Recommend tab
+# Background Music Setup (Optional)
+# -----------------------------
+def setup_background_music():
+    """
+    Sets up background music with controls in sidebar
+    """
+    # Initialize session state
+    if 'music_playing' not in st.session_state:
+        st.session_state.music_playing = False
+    if 'music_volume' not in st.session_state:
+        st.session_state.music_volume = 0.2
+    
+    # Direct audio URL (replace with your actual download link from Pixabay)
+    MUSIC_URL = "YOUR_PIXABAY_DIRECT_DOWNLOAD_LINK.mp3"
+    
+    # Only proceed if URL is set
+    if MUSIC_URL != "YOUR_PIXABAY_DIRECT_DOWNLOAD_LINK.mp3":
+        # Audio player HTML
+        audio_html = f"""
+        <audio id="anime-bg-music" loop preload="auto">
+            <source src="{MUSIC_URL}" type="audio/mpeg">
+        </audio>
+        
+        <script>
+            (function() {{
+                const audio = document.getElementById('anime-bg-music');
+                if (!audio) return;
+                
+                audio.volume = {st.session_state.music_volume};
+                
+                if ({'true' if st.session_state.music_playing else 'false'}) {{
+                    const playPromise = audio.play();
+                    if (playPromise !== undefined) {{
+                        playPromise.catch(e => {{
+                            console.log("Autoplay prevented:", e);
+                        }});
+                    }}
+                }}
+                
+                window.animeAudio = audio;
+            }})();
+        </script>
+        """
+        
+        st.markdown(audio_html, unsafe_allow_html=True)
+        
+        # Add controls to sidebar
+        with st.sidebar:
+            st.divider()
+            st.subheader("🎵 Background Music")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                play_label = "⏸️ Pause" if st.session_state.music_playing else "▶️ Play"
+                if st.button(play_label, key="music_play_btn"):
+                    st.session_state.music_playing = not st.session_state.music_playing
+                    st.rerun()
+            
+            with col2:
+                new_volume = st.slider("🔊", 0.0, 1.0, 
+                                      st.session_state.music_volume, 0.1,
+                                      key="music_vol_slider",
+                                      label_visibility="collapsed")
+                if new_volume != st.session_state.music_volume:
+                    st.session_state.music_volume = new_volume
+                    st.rerun()
+            
+            st.caption("🎌 Background music by Pixabay")
+
+# Uncomment the line below and add your Pixabay audio URL to enable background music
+# setup_background_music()
+
+
+# -----------------------------
+# Recommendations Tab
 # -----------------------------
 with tab1:
-    # Trending section with better styling
+    # Trending section
     st.markdown("### 🔥 Trending Now")
     st.caption("Based on rating × popularity score")
     
@@ -781,7 +1104,7 @@ with tab1:
         selected_name = st.session_state.selected_anime
         row = anime[anime["name"] == selected_name].iloc[0]
 
-        # Display anime title nicely
+        # Display anime title
         st.markdown(f"<div class='anime-title'>{selected_name}</div>", unsafe_allow_html=True)
         
         # Create two columns for poster and info
@@ -797,7 +1120,7 @@ with tab1:
                 st.info("📷 Poster not available")
 
         with right:
-            # Custom metrics display
+            # Metrics display
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
@@ -815,7 +1138,7 @@ with tab1:
                 st.metric("👥 Members", members_count)
             
             # Genre tags
-            st.markdown("**Genres:**")
+            st.markdown("**Genres**")
             if row['genre'] and row['genre'] != "":
                 genres = row['genre'].split(', ')
                 genre_html = ""
@@ -866,7 +1189,7 @@ with tab1:
 
         st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)
         st.markdown("### ✨ Similar Anime Recommendations")
-        st.caption(f"Based on genre similarity (TF-IDF + Cosine Similarity)")
+        st.caption(f"Based on genre similarity")
         
         with st.spinner("Generating recommendations..."):
             recs = recommend(selected_name, top_n=top_n)
@@ -894,7 +1217,7 @@ with tab1:
 
 
 # -----------------------------
-# Dashboard / EDA tab
+# Analytics Dashboard Tab
 # -----------------------------
 with tab2:
     st.markdown("### 📊 Analytics Dashboard")
@@ -913,7 +1236,7 @@ with tab2:
     m1.metric("📊 Total Anime", f"{total_anime:,}")
     m2.metric("⭐ Avg Rating", f"{avg_rating:.2f}" if not np.isnan(avg_rating) else "N/A")
     m3.metric("👥 Avg Members", f"{int(avg_members):,}" if not np.isnan(avg_members) else "N/A")
-    m4.metric("👥 Total Members", f"{int(total_members):,}" if not np.isnan(total_members) else "N/A")
+    m4.metric("💰 Total Members", f"{int(total_members):,}" if not np.isnan(total_members) else "N/A")
 
     st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)
 
