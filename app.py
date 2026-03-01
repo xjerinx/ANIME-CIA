@@ -22,7 +22,7 @@ st.set_page_config(page_title="Anime Recommender", page_icon="🎌", layout="wid
 # Theme toggle (Main page can be dark/light)
 # Sidebar ALWAYS dark, search input ALWAYS black
 # -----------------------------
-# ✅ FIX: toggle can break on Streamlit Cloud older versions, checkbox works everywhere
+# ✅ FIX: checkbox works on all Streamlit Cloud versions (toggle may fail)
 dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
 
 BASE_SIDEBAR_CSS = """
@@ -265,24 +265,39 @@ anime = load_data()
 
 
 # -----------------------------
-# Poster fetch (Jikan API)
+# Media fetch (Poster + MAL + Trailer) via Jikan API
 # -----------------------------
 @st.cache_data(ttl=24 * 3600)
-def fetch_poster(anime_name: str):
+def fetch_media(anime_name: str):
+    """
+    Returns: (poster_url, mal_url, trailer_url)
+    trailer_url is usually a YouTube link (safe/legit preview)
+    """
     try:
         url = "https://api.jikan.moe/v4/anime"
         r = requests.get(url, params={"q": anime_name, "limit": 1}, timeout=10)
         if r.status_code != 200:
-            return None, None
+            return None, None, None
+
         data = r.json().get("data", [])
         if not data:
-            return None, None
+            return None, None, None
+
         item = data[0]
         poster = item.get("images", {}).get("jpg", {}).get("image_url")
         mal_url = item.get("url")
-        return poster, mal_url
+
+        trailer_url = None
+        trailer = item.get("trailer") or {}
+        youtube_id = trailer.get("youtube_id")
+        if youtube_id:
+            trailer_url = f"https://www.youtube.com/watch?v={youtube_id}"
+        else:
+            trailer_url = trailer.get("url")
+
+        return poster, mal_url, trailer_url
     except Exception:
-        return None, None
+        return None, None, None
 
 
 # -----------------------------
@@ -358,7 +373,6 @@ def request_clear_trending_only():
     st.session_state.trend_selected_idx = None
 
 
-# ✅ NEW: clear only the search widget
 def request_clear_search_only():
     st.session_state.clear_search = True
 
@@ -386,11 +400,16 @@ chosen_name = st.sidebar.selectbox(
 top_n = st.sidebar.slider("Number of recommendations", 5, 20, 10)
 
 if chosen_name:
-    poster_url, mal_url = fetch_poster(chosen_name)
+    poster_url, mal_url, trailer_url = fetch_media(chosen_name)
+
     if poster_url:
         st.sidebar.image(poster_url, width=140)
+
     if mal_url:
         st.sidebar.markdown(f"[Open on MAL]({mal_url})")
+
+    if trailer_url:
+        st.sidebar.markdown(f"[▶️ Trailer]({trailer_url})")
 
     if st.sidebar.button("✅ Use this anime", use_container_width=True):
         request_clear_trending_only()
@@ -400,7 +419,8 @@ if chosen_name:
 
 
 # -----------------------------
-# Sidebar: Top 6 Trending
+# Sidebar: Top 6 Trending (compact, aligned, checkbox below poster)
+# Single-select behavior, hover full title
 # -----------------------------
 st.sidebar.divider()
 st.sidebar.subheader("🔥 Top Trending (Top 6)")
@@ -424,7 +444,7 @@ def on_trend_select(i: int, name: str):
 
 for i, row in enumerate(trending6.itertuples(index=False)):
     name = str(row.name)
-    poster_url, _ = fetch_poster(name)
+    poster_url, _, _ = fetch_media(name)
     poster_url = poster_url or "https://via.placeholder.com/300x450?text=No+Img"
     short_name = shorten_title(name, 20)
 
@@ -449,6 +469,7 @@ for i, row in enumerate(trending6.itertuples(index=False)):
             unsafe_allow_html=True,
         )
 
+        # ✅ FIX: don't pass "value=" while also setting st.session_state[k]
         k = f"trend_cb_{i}"
         if k not in st.session_state:
             st.session_state[k] = (st.session_state.trend_selected_idx == i)
@@ -519,8 +540,9 @@ with tab1:
         left, right = st.columns([1, 2])
 
         with left:
-            with st.spinner("Fetching poster…"):
-                poster_url, mal_url = fetch_poster(selected_name)
+            with st.spinner("Fetching media…"):
+                poster_url, mal_url, trailer_url = fetch_media(selected_name)
+
             if poster_url:
                 st.image(poster_url, width=260)
                 if mal_url:
@@ -535,6 +557,14 @@ with tab1:
             c3.metric("Episodes", int(row["episodes"]) if pd.notna(row["episodes"]) else "N/A")
             c4.metric("Members", f"{int(row['members']):,}" if pd.notna(row["members"]) else "N/A")
             st.write(f"**Genre:** {row['genre'] if row['genre'] else 'N/A'}")
+
+        # ✅ Trailer playback (legal preview)
+        st.divider()
+        st.subheader("▶️ Trailer / Preview")
+        if trailer_url:
+            st.video(trailer_url)
+        else:
+            st.info("Trailer not available for this anime.")
 
         st.divider()
         st.subheader("✨ Recommendations (TF-IDF similarity)")
@@ -554,7 +584,7 @@ with tab1:
 
 
 # -----------------------------
-# Dashboard / EDA tab
+# Dashboard / EDA tab (5 clean graphs + short explanation)
 # -----------------------------
 with tab2:
     st.subheader("📊 Dashboard / EDA (Clean)")
