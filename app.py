@@ -1,6 +1,7 @@
 import html
 import re
 import requests
+import os
 
 import numpy as np
 import pandas as pd
@@ -12,6 +13,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from difflib import SequenceMatcher
 
+# YouTube API imports
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+
 
 # -----------------------------
 # Page config
@@ -20,8 +25,107 @@ st.set_page_config(page_title="Anime Recommender", page_icon="🎌", layout="wid
 
 
 # -----------------------------
-# Theme toggle (Main page can be dark/light)
-# Sidebar ALWAYS dark, search input ALWAYS black
+# YouTube API Setup
+# -----------------------------
+def get_youtube_api_key():
+    """Get YouTube API key from Streamlit secrets"""
+    try:
+        return st.secrets["youtube_api_key"]
+    except:
+        return None
+
+# Initialize YouTube API key
+YOUTUBE_API_KEY = get_youtube_api_key()
+
+# Debug: Show API key status in sidebar
+if YOUTUBE_API_KEY:
+    st.sidebar.success("✅ YouTube API Connected")
+else:
+    st.sidebar.warning("⚠️ YouTube API key not found. Using basic search.")
+
+
+# -----------------------------
+# YouTube API Functions
+# -----------------------------
+@st.cache_data(ttl=24 * 3600)
+def search_youtube_trailer(anime_name):
+    """Search YouTube for anime trailer using API"""
+    if not YOUTUBE_API_KEY:
+        return None
+    
+    try:
+        # Build YouTube API client
+        youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY, cache_discovery=False)
+        
+        # Try multiple search queries
+        search_queries = [
+            f"{anime_name} official trailer",
+            f"{anime_name} anime trailer",
+            f"{anime_name} PV",  # PV = Promotional Video
+            anime_name
+        ]
+        
+        for query in search_queries:
+            search_response = youtube.search().list(
+                q=query,
+                part='id',
+                type='video',
+                maxResults=1,
+                videoEmbeddable='true'
+            ).execute()
+            
+            items = search_response.get('items', [])
+            if items:
+                video_id = items[0]['id']['videoId']
+                return f"https://www.youtube.com/watch?v={video_id}"
+        
+        return None
+        
+    except Exception as e:
+        print(f"YouTube search error: {e}")
+        return None
+
+
+@st.cache_data(ttl=24 * 3600)
+def fetch_youtube_trailer_fallback(anime_name):
+    """Fallback method using web scraping (no API key needed)"""
+    try:
+        # Clean the anime name for URL
+        clean_name = re.sub(r'[^\w\s-]', '', anime_name)
+        clean_name = clean_name.strip().replace(' ', '+')
+        
+        # Try different search patterns
+        search_patterns = [
+            f"{clean_name}+official+trailer",
+            f"{clean_name}+anime+trailer",
+            f"{clean_name}+pv",
+            clean_name
+        ]
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        for pattern in search_patterns:
+            search_url = f"https://www.youtube.com/results?search_query={pattern}"
+            response = requests.get(search_url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                # Look for video IDs in the response
+                video_pattern = r'"videoId":"([a-zA-Z0-9_-]{11})"'
+                matches = re.findall(video_pattern, response.text)
+                
+                if matches:
+                    return f"https://www.youtube.com/watch?v={matches[0]}"
+        
+        return None
+    except Exception as e:
+        print(f"Fallback error: {e}")
+        return None
+
+
+# -----------------------------
+# Theme toggle
 # -----------------------------
 dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
 
@@ -82,12 +186,15 @@ BASE_SIDEBAR_CSS = """
     margin-top: 4px;
     margin-bottom: 2px;
   }
-  /* Smaller checkbox area in sidebar */
-  section[data-testid="stSidebar"] div[data-baseweb="checkbox"]{
-    transform: scale(0.92);
-    transform-origin: center top;
+  
+  /* Video container styling */
+  .video-container {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    margin: 15px 0;
   }
-
+  
   /* Explanation box */
   .explain-box{
     background: rgba(17,24,39,0.55);
@@ -96,14 +203,6 @@ BASE_SIDEBAR_CSS = """
     padding: 10px 12px;
     color: #9ca3af;
     font-size: 0.92rem;
-  }
-  
-  /* Video container styling */
-  .video-container {
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    margin: 15px 0;
   }
 </style>
 """
@@ -126,7 +225,6 @@ if dark_mode:
           .stCaption,p,li{color:var(--muted);}
           a{color:#93c5fd;}
 
-          /* Metrics cards */
           div[data-testid="stMetric"]{
             background:rgba(17,24,39,.9);
             border:1px solid var(--border);
@@ -135,7 +233,6 @@ if dark_mode:
             box-shadow:0 10px 30px rgba(0,0,0,0.35);
           }
 
-          /* Dataframe */
           .stDataFrame, [data-testid="stDataFrame"]{
             border-radius: 14px;
             overflow: hidden;
@@ -198,106 +295,51 @@ st.caption("Content-based recommendation using TF-IDF + Cosine Similarity on gen
 # Media fetch (Poster + MAL + Trailer) via Jikan API
 # -----------------------------
 @st.cache_data(ttl=24 * 3600)
-def fetch_media(anime_name: str):
+def fetch_media(anime_name):
     """
     Returns: (poster_url, mal_url, trailer_url)
-    - Searches top 5 matches
-    - Picks the closest title match that has a trailer (if any)
-    - Ensures we get actual YouTube trailer URL for embedding
+    - First tries MAL, then YouTube API, then fallback
     """
+    poster = None
+    mal_url = None
+    trailer_url = None
+    
     try:
+        # Try MAL first
         url = "https://api.jikan.moe/v4/anime"
-        r = requests.get(url, params={"q": anime_name, "limit": 5}, timeout=10)
-        if r.status_code != 200:
-            return None, None, None
-
-        data = r.json().get("data", [])
-        if not data:
-            return None, None, None
-
-        def title_score(item):
-            title = (item.get("title") or "").lower()
-            return SequenceMatcher(None, anime_name.lower(), title).ratio()
-
-        # Prefer items that HAVE trailer, then best title match
-        candidates = []
-        for item in data:
-            trailer = item.get("trailer") or {}
-            has_trailer = bool(trailer.get("youtube_id") or trailer.get("url"))
-            candidates.append((has_trailer, title_score(item), item))
-
-        # Sort: trailer first, then best match
-        candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
-        item = candidates[0][2]
-
-        poster = item.get("images", {}).get("jpg", {}).get("image_url")
-        mal_url = item.get("url")
-
-        # Get the trailer URL properly for embedding
-        trailer_url = None
-        trailer = item.get("trailer") or {}
-        youtube_id = trailer.get("youtube_id")
+        r = requests.get(url, params={"q": anime_name, "limit": 3}, timeout=10)
         
-        if youtube_id:
-            # This format works perfectly with st.video
-            trailer_url = f"https://www.youtube.com/watch?v={youtube_id}"
-        else:
-            # Fallback to the URL if no youtube_id
-            trailer_url = trailer.get("url")
-
+        if r.status_code == 200:
+            data = r.json().get("data", [])
+            if data:
+                # Get poster and MAL URL from first result
+                poster = data[0].get("images", {}).get("jpg", {}).get("image_url")
+                mal_url = data[0].get("url")
+                
+                # Check for trailer in all results
+                for item in data:
+                    trailer = item.get("trailer") or {}
+                    youtube_id = trailer.get("youtube_id")
+                    if youtube_id:
+                        trailer_url = f"https://www.youtube.com/watch?v={youtube_id}"
+                        break
+                    elif not trailer_url:
+                        trailer_url = trailer.get("url")
+        
+        # If MAL didn't have trailer, try YouTube API
+        if not trailer_url and YOUTUBE_API_KEY:
+            trailer_url = search_youtube_trailer(anime_name)
+        
+        # If still no trailer, try fallback
+        if not trailer_url:
+            trailer_url = fetch_youtube_trailer_fallback(anime_name)
+        
         return poster, mal_url, trailer_url
-
+        
     except Exception as e:
         print(f"Error fetching media: {e}")
-        return None, None, None
-
-
-@st.cache_data(ttl=24 * 3600)
-def fetch_detailed_trailer(anime_name: str):
-    """
-    Secondary function to fetch trailer with more detailed search
-    Returns YouTube URL specifically for embedding
-    """
-    try:
-        # First search for the anime to get MAL ID
-        search_url = "https://api.jikan.moe/v4/anime"
-        search_params = {"q": anime_name, "limit": 3}
-        search_response = requests.get(search_url, params=search_params, timeout=10)
-        
-        if search_response.status_code == 200:
-            search_data = search_response.json().get("data", [])
-            if search_data:
-                # Find best title match
-                best_match = None
-                best_score = 0
-                
-                for item in search_data:
-                    title = item.get("title", "").lower()
-                    score = SequenceMatcher(None, anime_name.lower(), title).ratio()
-                    if score > best_score:
-                        best_score = score
-                        best_match = item
-                
-                if best_match and best_score > 0.6:  # Reasonable match threshold
-                    mal_id = best_match.get("mal_id")
-                    
-                    # Get full anime details including trailer
-                    detail_url = f"https://api.jikan.moe/v4/anime/{mal_id}/full"
-                    detail_response = requests.get(detail_url, timeout=10)
-                    
-                    if detail_response.status_code == 200:
-                        detail_data = detail_response.json().get("data", {})
-                        trailer = detail_data.get("trailer", {})
-                        
-                        youtube_id = trailer.get("youtube_id")
-                        if youtube_id:
-                            return f"https://www.youtube.com/watch?v={youtube_id}"
-                        else:
-                            return trailer.get("url")
-        return None
-    except Exception as e:
-        print(f"Error in detailed trailer fetch: {e}")
-        return None
+        # Last resort - try fallback
+        return poster, mal_url, fetch_youtube_trailer_fallback(anime_name)
 
 
 # -----------------------------
@@ -379,7 +421,7 @@ anime = load_data()
 
 
 # -----------------------------
-# FAST TF-IDF (no NxN matrix)
+# FAST TF-IDF
 # -----------------------------
 @st.cache_data
 def build_tfidf_matrix(genres: pd.Series):
@@ -423,7 +465,7 @@ def shorten_title(title: str, max_len: int = 20) -> str:
 
 
 # -----------------------------
-# Session state (SAFE clearing)
+# Session state
 # -----------------------------
 if "selected_anime" not in st.session_state:
     st.session_state.selected_anime = None
@@ -456,7 +498,7 @@ def request_clear_search_only():
 
 
 # -----------------------------
-# Sidebar: Search (typeahead)
+# Sidebar: Search
 # -----------------------------
 st.sidebar.header("🔎 Search Anime")
 
@@ -497,7 +539,7 @@ if chosen_name:
 
 
 # -----------------------------
-# Sidebar: Top 6 Trending (compact, aligned, checkbox below poster)
+# Sidebar: Top 6 Trending
 # -----------------------------
 st.sidebar.divider()
 st.sidebar.subheader("🔥 Top Trending (Top 6)")
@@ -562,7 +604,7 @@ for i, row in enumerate(trending6.itertuples(index=False)):
 
 
 # -----------------------------
-# EDA filter (Dashboard only)
+# EDA filter
 # -----------------------------
 st.sidebar.divider()
 st.sidebar.subheader("📊 Dashboard / EDA filter")
@@ -618,10 +660,6 @@ with tab1:
         with left:
             with st.spinner("Fetching media…"):
                 poster_url, mal_url, trailer_url = fetch_media(selected_name)
-                
-                # If no trailer found, try detailed search
-                if not trailer_url:
-                    trailer_url = fetch_detailed_trailer(selected_name)
 
             if poster_url:
                 st.image(poster_url, width=260)
@@ -638,39 +676,38 @@ with tab1:
             c4.metric("Members", f"{int(row['members']):,}" if pd.notna(row["members"]) else "N/A")
             st.write(f"**Genre:** {row['genre'] if row['genre'] else 'N/A'}")
 
-        # ✅ Video Trailer Section - Now properly embedded!
+        # ✅ Video Trailer Section
         st.divider()
         st.subheader("🎬 Trailer / Preview")
         
-        # Create a container for the video with some styling
+        # Create a container for the video
         st.markdown('<div class="video-container">', unsafe_allow_html=True)
         
-        if trailer_url:
-            # Check if it's a YouTube URL
-            if "youtube.com" in trailer_url or "youtu.be" in trailer_url:
-                # st.video works perfectly with YouTube URLs
-                st.video(trailer_url)
-                
-                # Add a caption with source
-                st.caption("🎥 Official trailer from MyAnimeList")
-                
-                # Add a direct link as backup
-                st.markdown(f"[🔗 Direct YouTube Link]({trailer_url})")
+        if trailer_url and ("youtube.com" in trailer_url or "youtu.be" in trailer_url):
+            # Play the video directly in the app
+            st.video(trailer_url)
+            
+            # Show source info
+            if YOUTUBE_API_KEY and "googleapis" not in str(trailer_url):
+                st.caption("🎥 Found via YouTube API")
             else:
-                # For non-YouTube videos, still try to embed
-                st.video(trailer_url)
+                st.caption("🎥 Found via YouTube search")
         else:
-            # No trailer found - offer alternatives
-            st.info("📺 No official trailer available for this anime")
+            # No trailer found - show options
+            st.info("📺 No trailer automatically found")
             
-            # Provide YouTube search link
-            search_query = f"{selected_name} anime official trailer"
-            youtube_search = f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
-            st.markdown(f"[🔍 Search for trailer on YouTube]({youtube_search})")
+            # Create columns for action buttons
+            col1, col2 = st.columns(2)
             
-            # Also try to find on MAL
-            if mal_url:
-                st.markdown(f"[🔗 Check on MyAnimeList for videos]({mal_url})")
+            with col1:
+                # YouTube search link
+                search_query = f"{selected_name} anime official trailer"
+                youtube_search = f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
+                st.markdown(f"[🔍 Search YouTube]({youtube_search})")
+            
+            with col2:
+                if mal_url:
+                    st.markdown(f"[📝 Check MyAnimeList]({mal_url})")
         
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -692,7 +729,7 @@ with tab1:
 
 
 # -----------------------------
-# Dashboard / EDA tab (5 clean graphs + short explanation)
+# Dashboard / EDA tab
 # -----------------------------
 with tab2:
     st.subheader("📊 Dashboard / EDA (Clean)")
