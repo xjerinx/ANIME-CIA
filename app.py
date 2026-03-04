@@ -10,7 +10,14 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
-from wordcloud import WordCloud
+
+# Try importing wordcloud; if not available, disable that feature
+try:
+    from wordcloud import WordCloud
+    WORDCLOUD_AVAILABLE = True
+except ImportError:
+    WORDCLOUD_AVAILABLE = False
+    st.warning("WordCloud module not installed. Genre word cloud will be replaced with a bar chart.")
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -453,7 +460,7 @@ def request_clear_search_only():
 
 
 # -----------------------------
-# Apply CSS based on dark mode toggle (we keep dark mode as default but can be toggled)
+# Apply CSS based on dark mode toggle
 # -----------------------------
 dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
 apply_custom_css(dark_mode)
@@ -476,7 +483,7 @@ st.markdown(
 
 
 # -----------------------------
-# Sidebar: Search + Trending + New Random button
+# Sidebar: Search + Trending + Random button
 # -----------------------------
 st.sidebar.header("🔎 Search Anime")
 
@@ -497,7 +504,7 @@ chosen_name = st.sidebar.selectbox(
 
 top_n = st.sidebar.slider("Number of recommendations", 5, 20, 10)
 
-# NEW: Random anime picker
+# Random anime picker
 if st.sidebar.button("🎲 Random Anime", use_container_width=True):
     random_anime = random.choice(anime_names)
     st.session_state.selected_anime = random_anime
@@ -576,7 +583,7 @@ for i, row in enumerate(trending6.itertuples(index=False)):
 
 
 # -----------------------------
-# Sidebar: EDA filters (unchanged)
+# Sidebar: EDA filters
 # -----------------------------
 st.sidebar.divider()
 st.sidebar.subheader("📊 Dashboard Filters")
@@ -600,7 +607,7 @@ eda_df = eda_df[(eda_df["rating"] >= eda_min_rating) & (eda_df["rating"] <= eda_
 
 
 # -----------------------------
-# NEW: Watchlist feature
+# Watchlist feature
 # -----------------------------
 st.sidebar.divider()
 st.sidebar.subheader("📋 My Watchlist")
@@ -616,7 +623,7 @@ else:
 
 
 # -----------------------------
-# Tabs: Recommend, Dashboard, Explore (new)
+# Tabs: Recommend, Dashboard, Explore
 # -----------------------------
 tab1, tab2, tab3 = st.tabs(["✨ Recommend", "📈 Analytics", "🔍 Genre Explorer"])
 
@@ -674,7 +681,7 @@ with tab1:
                 c4.metric("Members", f"{int(row['members']):,}" if pd.notna(row["members"]) else "N/A")
                 st.write(f"**Genre:** {row['genre'] if row['genre'] else 'N/A'}")
 
-                # Mini genre distribution (placeholder)
+                # Mini genre tags
                 if row['genre']:
                     genres = [g.strip() for g in row['genre'].split(',')]
                     st.markdown("**Genre tags:**")
@@ -739,7 +746,7 @@ with tab1:
 
 
 # -----------------------------
-# Tab 2: Dashboard (enhanced with wordcloud)
+# Tab 2: Dashboard (enhanced with wordcloud or fallback)
 # -----------------------------
 with tab2:
     st.subheader("📊 Anime Analytics")
@@ -768,7 +775,7 @@ with tab2:
         ax.tick_params(colors='white')
         st.pyplot(fig)
     with e1:
-        st.markdown('<div class="explain-box">🌟 Shows how ratings are distributed. The peak is the most common rating range.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="explain-box">🌟 Shows how ratings are distributed.</div>', unsafe_allow_html=True)
 
     st.divider()
 
@@ -785,7 +792,7 @@ with tab2:
         ax.tick_params(colors='white')
         st.pyplot(fig)
     with e2:
-        st.markdown('<div class="explain-box">📺 Compares average rating across formats. Useful to see which types are best rated.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="explain-box">📺 Compares average rating across formats.</div>', unsafe_allow_html=True)
 
     st.divider()
 
@@ -803,7 +810,7 @@ with tab2:
         ax.tick_params(colors='white')
         st.pyplot(fig)
     with e3:
-        st.markdown('<div class="explain-box">📈 Shows popularity vs rating pattern. Log scale helps compare small & huge anime.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="explain-box">📈 Popularity vs rating.</div>', unsafe_allow_html=True)
 
     st.divider()
 
@@ -821,14 +828,14 @@ with tab2:
         else:
             st.info("Not enough data after filtering to compute correlations.")
     with e4:
-        st.markdown('<div class="explain-box">🔗 Measures relationships between numeric fields. Values near ±1 mean stronger association.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="explain-box">🔗 Relationships between numeric fields.</div>', unsafe_allow_html=True)
 
     st.divider()
 
-    # 5) Top Genres (now with word cloud)
+    # 5) Genre Visualization (WordCloud if available, else bar chart)
     g5, e5 = st.columns([3, 1])
     with g5:
-        st.markdown("### Genre Word Cloud")
+        st.markdown("### Genre Frequency")
         genres_series = (
             eda_df["genre"]
             .fillna("")
@@ -839,21 +846,31 @@ with tab2:
         )
         genres_series = genres_series[genres_series != ""]
         if not genres_series.empty:
-            wordcloud = WordCloud(
-                width=800, height=400,
-                background_color=None,
-                mode="RGBA",
-                colormap='viridis',
-                prefer_horizontal=0.5
-            ).generate(' '.join(genres_series))
-            fig, ax = plt.subplots(facecolor='none')
-            ax.imshow(wordcloud, interpolation='bilinear')
-            ax.axis("off")
-            st.pyplot(fig)
+            if WORDCLOUD_AVAILABLE:
+                wordcloud = WordCloud(
+                    width=800, height=400,
+                    background_color=None,
+                    mode="RGBA",
+                    colormap='viridis',
+                    prefer_horizontal=0.5
+                ).generate(' '.join(genres_series))
+                fig, ax = plt.subplots(facecolor='none')
+                ax.imshow(wordcloud, interpolation='bilinear')
+                ax.axis("off")
+                st.pyplot(fig)
+            else:
+                # Fallback bar chart
+                top_genres = genres_series.value_counts().head(15)
+                fig, ax = plt.subplots(facecolor='none')
+                ax.set_facecolor('none')
+                ax.barh(top_genres.index[::-1], top_genres.values[::-1], color='gold')
+                ax.set_xlabel("Count", color='white')
+                ax.tick_params(colors='white')
+                st.pyplot(fig)
         else:
             st.info("No genres available after filtering.")
     with e5:
-        st.markdown('<div class="explain-box">🎭 Word cloud of most frequent genres. Bigger words appear more often.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="explain-box">🎭 Most frequent genres.</div>', unsafe_allow_html=True)
 
 
 # -----------------------------
@@ -871,7 +888,7 @@ with tab3:
     selected_genres = st.multiselect("Choose genres", all_genres, default=["Action", "Comedy"])
 
     if selected_genres:
-        # Filter anime that contain ALL selected genres (strict) or ANY? Let's do ANY for broader results
+        # Filter anime that contain ANY selected genre
         mask = anime["genre"].apply(
             lambda x: any(genre in str(x) for genre in selected_genres) if pd.notna(x) else False
         )
