@@ -21,7 +21,7 @@ from googleapiclient.errors import HttpError
 # -----------------------------
 # Page config
 # -----------------------------
-st.set_page_config(page_title="Anime Recommender", page_icon="🎌", layout="wide")
+st.set_page_config(page_title="Anime Recommender", page_icon="🎌", layout="wide", initial_sidebar_state="expanded")
 
 
 # -----------------------------
@@ -36,6 +36,12 @@ def get_youtube_api_key():
 
 # Initialize YouTube API key
 YOUTUBE_API_KEY = get_youtube_api_key()
+
+# Debug: Show API key status in sidebar
+if YOUTUBE_API_KEY:
+    st.sidebar.success("✅ YouTube API Connected")
+else:
+    st.sidebar.warning("⚠️ YouTube API key not found. Using basic search.")
 
 
 # -----------------------------
@@ -55,7 +61,7 @@ def search_youtube_trailer(anime_name):
         search_queries = [
             f"{anime_name} official trailer",
             f"{anime_name} anime trailer",
-            f"{anime_name} PV",
+            f"{anime_name} PV",  # PV = Promotional Video
             anime_name
         ]
         
@@ -119,6 +125,336 @@ def fetch_youtube_trailer_fallback(anime_name):
 
 
 # -----------------------------
+# Theme toggle + Global Styling
+# -----------------------------
+dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
+
+# ======================
+# ENHANCED CREATIVE CSS
+# ======================
+BASE_SIDEBAR_CSS = """
+<style>
+  /* Import anime-style font */
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Righteous&display=swap');
+
+  /* Global font override */
+  * { font-family: 'Poppins', sans-serif; }
+
+  /* Sidebar always dark with glass effect */
+  section[data-testid="stSidebar"]{
+    background: rgba(10, 14, 22, 0.95) !important;
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 4px 0 25px rgba(0,0,0,0.5);
+  }
+  section[data-testid="stSidebar"] *{ color:#f0f3fa !important; }
+  section[data-testid="stSidebar"] .stCaption,
+  section[data-testid="stSidebar"] p,
+  section[data-testid="stSidebar"] small{
+    color: #b0b8cc !important;
+  }
+
+  /* Sidebar input with glow */
+  section[data-testid="stSidebar"] div[data-baseweb="input"] input{
+    background-color: #1e2638 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,215,0,0.3) !important;
+    border-radius: 30px !important;
+    padding: 12px 18px !important;
+    font-weight: 400;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  section[data-testid="stSidebar"] div[data-baseweb="input"] input:focus{
+    border-color: gold !important;
+    box-shadow: 0 0 0 3px rgba(255,215,0,0.2) !important;
+  }
+  section[data-testid="stSidebar"] div[data-baseweb="input"] input::placeholder{
+    color: #6a7299 !important;
+    font-style: italic;
+  }
+
+  /* Sidebar buttons */
+  .stButton > button {
+    background: linear-gradient(135deg, #2a2f45, #1a1f30);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 40px;
+    color: #f0f3fa;
+    font-weight: 600;
+    padding: 10px 24px;
+    transition: all 0.2s ease;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.3);
+  }
+  .stButton > button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #3a405a, #2a2f45);
+    border-color: gold;
+    box-shadow: 0 12px 20px rgba(0,0,0,0.4);
+  }
+
+  /* Sidebar sliders / selects */
+  div[data-testid="stSlider"] {
+    padding: 10px 0;
+  }
+  div[data-testid="stMultiSelect"] > div {
+    background-color: #1e2638 !important;
+    border-radius: 30px;
+    border: 1px solid rgba(255,215,0,0.2);
+  }
+
+  /* Compact trending cards - anime vibe */
+  .trend-card{
+    background: rgba(20, 25, 40, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 24px;
+    padding: 10px 8px 12px 8px;
+    margin-bottom: 16px;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    box-shadow: 0 10px 20px -5px rgba(0,0,0,0.5);
+  }
+  .trend-card:hover{
+    transform: scale(1.02) translateY(-5px);
+    border-color: rgba(255,215,0,0.5);
+    box-shadow: 0 18px 30px -5px rgba(255,215,0,0.2);
+    background: rgba(30, 35, 55, 0.9);
+  }
+  .trend-img{
+    width:100%;
+    height:130px;
+    border-radius:18px;
+    overflow:hidden;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .trend-img img{
+    width:100%;
+    height:130px;
+    object-fit:cover;
+    display:block;
+    transition: transform 0.5s ease;
+  }
+  .trend-card:hover .trend-img img{
+    transform: scale(1.1);
+  }
+  .trend-title{
+    font-size: 0.82rem;
+    line-height: 1.2;
+    font-weight: 600;
+    color: #f0e6d0;
+    text-align:center;
+    white-space: nowrap;
+    overflow:hidden;
+    text-overflow: ellipsis;
+    margin: 10px 4px 6px 4px;
+    letter-spacing: 0.3px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+  
+  /* Video container styling */
+  .video-container {
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,215,0,0.2);
+    margin: 25px 0;
+    transition: box-shadow 0.3s;
+  }
+  .video-container:hover {
+    box-shadow: 0 25px 50px rgba(255,215,0,0.2), 0 0 0 3px gold;
+  }
+  
+  /* Explanation box with anime quote feel */
+  .explain-box{
+    background: rgba(20, 25, 45, 0.75);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,215,0,0.25);
+    border-radius: 24px;
+    padding: 16px 20px;
+    color: #d0d8f0;
+    font-size: 0.95rem;
+    font-style: italic;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    border-left: 5px solid gold;
+  }
+
+  /* Metrics cards with glass */
+  div[data-testid="stMetric"] {
+    background: rgba(20, 25, 45, 0.7) !important;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 28px !important;
+    padding: 16px 10px !important;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+    transition: transform 0.2s;
+  }
+  div[data-testid="stMetric"]:hover {
+    transform: translateY(-5px);
+    border-color: gold;
+  }
+
+  /* DataFrames with rounded glass */
+  .stDataFrame, [data-testid="stDataFrame"]{
+    border-radius: 24px !important;
+    overflow: hidden;
+    border: 1px solid rgba(255,215,0,0.2);
+    background: rgba(20, 25, 45, 0.6) !important;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+  }
+
+  /* Custom header glow */
+  h1, h2, h3 {
+    text-shadow: 0 2px 10px rgba(255,215,0,0.3);
+    letter-spacing: 0.5px;
+  }
+  h1 {
+    font-family: 'Righteous', cursive;
+    font-size: 3rem !important;
+    background: linear-gradient(135deg, #fff8e7, #ffd966);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.2rem;
+  }
+  .stCaption {
+    font-size: 1rem;
+    color: #a0a8c0 !important;
+  }
+</style>
+"""
+
+if dark_mode:
+    st.markdown(
+        """
+        <style>
+          :root{
+            --bg: radial-gradient(circle at 30% 10%, #141b2b, #0a0f1a);
+            --text: #f0f3fa;
+            --muted: #b0b8cc;
+            --border: rgba(255,215,0,0.2);
+            --card-bg: rgba(20, 25, 45, 0.6);
+          }
+
+          .stApp{
+            background: var(--bg);
+            color: var(--text);
+          }
+          .block-container{
+            padding-top: 1.8rem;
+            padding-bottom: 3rem;
+            backdrop-filter: blur(2px);
+          }
+
+          h1,h2,h3,h4,h5,h6{color: var(--text);}
+          .stCaption,p,li{color: var(--muted);}
+          a{color: #ffd966; font-weight: 500;}
+
+          /* Tabs styling */
+          button[data-baseweb="tab"] {
+            background: rgba(20,25,45,0.5) !important;
+            border-radius: 40px !important;
+            margin: 0 5px;
+            border: 1px solid rgba(255,215,0,0.2) !important;
+            color: #d0d8f0 !important;
+            font-weight: 600;
+            backdrop-filter: blur(8px);
+          }
+          button[data-baseweb="tab"][aria-selected="true"] {
+            background: rgba(255,215,0,0.2) !important;
+            border-color: gold !important;
+            color: white !important;
+          }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    st.markdown(
+        """
+        <style>
+          :root{
+            --bg: linear-gradient(145deg, #f8f3ff, #e6ecff);
+            --text: #1e2438;
+            --muted: #3f4a6b;
+            --border: rgba(106, 90, 205, 0.2);
+            --card-bg: rgba(255,255,255,0.7);
+          }
+
+          .stApp{
+            background: var(--bg);
+            color: var(--text);
+          }
+          .block-container{
+            padding-top: 1.8rem;
+            padding-bottom: 3rem;
+            backdrop-filter: blur(2px);
+          }
+
+          h1,h2,h3,h4,h5,h6{color: #1e1a36;}
+          .stCaption,p,li{color: #4a5180;}
+          a{color: #6a4fe0; font-weight: 600;}
+
+          /* Light mode metric cards */
+          div[data-testid="stMetric"]{
+            background: rgba(255,255,255,0.7) !important;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(106,90,205,0.2);
+            border-radius: 28px !important;
+            box-shadow: 0 15px 30px rgba(60,50,100,0.1);
+          }
+
+          /* Light mode tabs */
+          button[data-baseweb="tab"] {
+            background: rgba(255,255,255,0.6) !important;
+            border-radius: 40px !important;
+            margin: 0 5px;
+            border: 1px solid rgba(106,90,205,0.3) !important;
+            color: #2d2f6e !important;
+            font-weight: 600;
+            backdrop-filter: blur(8px);
+          }
+          button[data-baseweb="tab"][aria-selected="true"] {
+            background: rgba(106,90,205,0.2) !important;
+            border-color: #6a4fe0 !important;
+            color: #2b1b6e !important;
+          }
+
+          /* DataFrames light */
+          .stDataFrame, [data-testid="stDataFrame"]{
+            background: rgba(255,255,255,0.7) !important;
+            border: 1px solid rgba(106,90,205,0.2);
+          }
+          .explain-box{
+            background: rgba(255,255,255,0.7);
+            border-left: 5px solid #6a4fe0;
+            color: #2b1b6e;
+          }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# Apply always-on sidebar/trending css
+st.markdown(BASE_SIDEBAR_CSS, unsafe_allow_html=True)
+
+
+# -----------------------------
+# Header with anime vibe
+# -----------------------------
+st.markdown(
+    """
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: -10px;">
+        <h1>🎌 ANIME RECOMMENDER</h1>
+        <span style="font-size: 1.2rem; background: rgba(255,215,0,0.2); padding: 5px 15px; border-radius: 60px; border:1px solid gold;">✨ content-based</span>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+st.caption("Discover your next favorite anime with TF-IDF magic + interactive dashboard.")
+
+
+# -----------------------------
 # Media fetch (Poster + MAL + Trailer) via Jikan API
 # -----------------------------
 @st.cache_data(ttl=24 * 3600)
@@ -167,311 +503,6 @@ def fetch_media(anime_name):
         print(f"Error fetching media: {e}")
         # Last resort - try fallback
         return poster, mal_url, fetch_youtube_trailer_fallback(anime_name)
-
-
-# -----------------------------
-# CLEAN UI THEMES - Dark Mode Only (No White)
-# -----------------------------
-# Base CSS that applies to both themes
-BASE_CSS = """
-<style>
-  /* Import Google Fonts */
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-  
-  * {
-    font-family: 'Inter', sans-serif;
-  }
-  
-  /* Smooth scrolling */
-  html {
-    scroll-behavior: smooth;
-  }
-  
-  /* Main app background - always dark */
-  .stApp {
-    background: #0f1219;
-  }
-  
-  .block-container {
-    padding-top: 1.5rem;
-    padding-bottom: 2rem;
-  }
-  
-  /* Sidebar styling */
-  section[data-testid="stSidebar"]{
-    background: #0a0e1a !important;
-    border-right: 1px solid rgba(255,255,255,0.05) !important;
-  }
-  section[data-testid="stSidebar"] *{ color:#e5e7eb !important; }
-  section[data-testid="stSidebar"] .stCaption,
-  section[data-testid="stSidebar"] p,
-  section[data-testid="stSidebar"] small{
-    color:#9ca3af !important;
-  }
-
-  /* Sidebar input styling */
-  section[data-testid="stSidebar"] div[data-baseweb="input"] input{
-    background-color: #1f2937 !important;
-    color:#e5e7eb !important;
-    border: 1px solid #374151 !important;
-    border-radius: 8px !important;
-    padding: 8px 12px !important;
-    font-size: 14px !important;
-  }
-  section[data-testid="stSidebar"] div[data-baseweb="input"] input:focus{
-    border-color: #60a5fa !important;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2) !important;
-  }
-
-  /* Trending cards */
-  .trend-card{
-    background: #1f2937;
-    border: 1px solid #374151;
-    border-radius: 8px;
-    padding: 8px;
-    margin-bottom: 12px;
-    transition: all 0.2s;
-  }
-  .trend-card:hover{
-    background: #2d3748;
-  }
-  
-  .trend-img{
-    width:100%;
-    height:120px;
-    border-radius:6px;
-    overflow:hidden;
-    background: #2d3748;
-  }
-  .trend-img img{
-    width:100%;
-    height:120px;
-    object-fit:cover;
-    display:block;
-  }
-  .trend-title{
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #e5e7eb;
-    text-align:center;
-    white-space: nowrap;
-    overflow:hidden;
-    text-overflow: ellipsis;
-    margin-top: 8px;
-  }
-  
-  /* Video container */
-  .video-container {
-    border-radius: 8px;
-    overflow: hidden;
-    margin: 20px 0;
-  }
-  
-  /* Explanation box */
-  .explain-box{
-    background: #1f2937;
-    border: 1px solid #374151;
-    border-radius: 8px;
-    padding: 16px;
-    color: #9ca3af;
-    font-size: 0.9rem;
-    height: 100%;
-  }
-  
-  /* Genre tags */
-  .genre-tag {
-    display: inline-block;
-    background: #1f2937;
-    border: 1px solid #374151;
-    border-radius: 16px;
-    padding: 4px 12px;
-    margin: 0 4px 4px 0;
-    font-size: 0.8rem;
-    color: #9ca3af;
-  }
-  
-  /* Divider styling */
-  .custom-divider {
-    margin: 30px 0;
-    border: none;
-    height: 1px;
-    background: #374151;
-  }
-  
-  /* Button styling */
-  .stButton button {
-    border-radius: 8px !important;
-    border: 1px solid #374151 !important;
-    background: #1f2937 !important;
-    color: #e5e7eb !important;
-    font-weight: 500 !important;
-    font-size: 14px !important;
-    padding: 8px 16px !important;
-    transition: all 0.2s !important;
-  }
-  .stButton button:hover {
-    background: #2d3748 !important;
-    border-color: #4b5563 !important;
-  }
-  
-  /* Small X button for clear */
-  .clear-x-btn {
-    background: #374151;
-    color: #9ca3af;
-    border: none;
-    border-radius: 6px;
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-  }
-  .clear-x-btn:hover {
-    background: #4b5563;
-    color: #e5e7eb;
-  }
-  
-  /* Selectbox styling */
-  div[data-baseweb="select"] div {
-    border-radius: 8px !important;
-    border: 1px solid #374151 !important;
-    background: #1f2937 !important;
-    color: #e5e7eb !important;
-  }
-  
-  /* Slider styling */
-  div[data-testid="stSlider"] label {
-    color: #9ca3af !important;
-  }
-  
-  /* Tabs styling */
-  .stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    background: #1f2937;
-    padding: 4px;
-    border-radius: 10px;
-    border: 1px solid #374151;
-  }
-  .stTabs [data-baseweb="tab"] {
-    border-radius: 6px !important;
-    padding: 8px 16px !important;
-    font-weight: 500 !important;
-    color: #9ca3af !important;
-  }
-  .stTabs [aria-selected="true"] {
-    background: #2d3748 !important;
-    color: #e5e7eb !important;
-  }
-  
-  /* Headers */
-  h1, h2, h3, h4, h5, h6 {
-    color: #e5e7eb;
-    font-weight: 600;
-  }
-  
-  h1 {
-    color: #60a5fa !important;
-  }
-  
-  .stCaption, p, li {
-    color: #9ca3af;
-  }
-  
-  a {
-    color: #60a5fa;
-    text-decoration: none;
-  }
-  
-  a:hover {
-    text-decoration: underline;
-  }
-  
-  /* Metrics */
-  div[data-testid="stMetric"] {
-    background: #1f2937;
-    border: 1px solid #374151;
-    border-radius: 8px;
-    padding: 16px;
-  }
-  
-  div[data-testid="stMetric"] label {
-    color: #9ca3af !important;
-  }
-  
-  div[data-testid="stMetric"] div {
-    color: #e5e7eb !important;
-    font-weight: 600 !important;
-  }
-  
-  /* DataFrames */
-  .stDataFrame, [data-testid="stDataFrame"] {
-    border-radius: 8px !important;
-    border: 1px solid #374151 !important;
-    background: #1f2937 !important;
-  }
-  
-  /* Info/Warning boxes */
-  .stAlert {
-    background: #1f2937 !important;
-    border: 1px solid #374151 !important;
-    color: #9ca3af !important;
-  }
-  
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    background: #1f2937;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background: #4b5563;
-    border-radius: 4px;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    background: #6b7280;
-  }
-  
-  /* Title with X button container */
-  .title-with-clear {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-  }
-  .title-with-clear h3 {
-    margin: 0;
-  }
-</style>
-"""
-
-# Apply base CSS
-st.markdown(BASE_CSS, unsafe_allow_html=True)
-
-# Show API status in sidebar
-if YOUTUBE_API_KEY:
-    st.sidebar.success("✅ YouTube API Connected")
-else:
-    st.sidebar.warning("⚠️ YouTube API key not found. Using basic search.")
-
-
-# -----------------------------
-# Header
-# -----------------------------
-st.markdown("""
-    <div style='text-align: center; margin-bottom: 30px;'>
-        <h1 style='font-size: 2.5rem; margin-bottom: 5px;'>🎌 ANIME RECOMMENDER</h1>
-        <p style='color: #9ca3af; font-size: 1rem;'>Discover your next favorite anime</p>
-    </div>
-""", unsafe_allow_html=True)
 
 
 # -----------------------------
@@ -561,7 +592,7 @@ def build_tfidf_matrix(genres: pd.Series):
     return tfidf.fit_transform(genres)
 
 
-with st.spinner("Building recommendation engine..."):
+with st.spinner("Building TF-IDF vectors…"):
     X = build_tfidf_matrix(anime["genre"])
 
 
@@ -652,10 +683,16 @@ chosen_name = st.sidebar.selectbox(
 top_n = st.sidebar.slider("Number of recommendations", 5, 20, 10)
 
 if chosen_name:
-    poster_url, _, _ = fetch_media(chosen_name)
+    poster_url, mal_url, trailer_url = fetch_media(chosen_name)
 
     if poster_url:
-        st.sidebar.image(poster_url, width=140)
+        st.sidebar.image(poster_url, width=140, output_format="auto")
+
+    if mal_url:
+        st.sidebar.markdown(f"[![MAL](https://img.icons8.com/color/24/000000/myanimelist.png) Open on MAL]({mal_url})")
+
+    if trailer_url:
+        st.sidebar.markdown(f"[▶️ Watch Trailer]({trailer_url})")
 
     if st.sidebar.button("✅ Use this anime", use_container_width=True):
         request_clear_trending_only()
@@ -668,7 +705,7 @@ if chosen_name:
 # Sidebar: Top 6 Trending
 # -----------------------------
 st.sidebar.divider()
-st.sidebar.subheader("🔥 Top Trending")
+st.sidebar.subheader("🔥 Top Trending (Top 6)")
 
 trending6 = top_trending(anime, n=min(6, len(anime)))
 
@@ -733,8 +770,8 @@ for i, row in enumerate(trending6.itertuples(index=False)):
 # EDA filter
 # -----------------------------
 st.sidebar.divider()
-st.sidebar.subheader("📊 Dashboard Filters")
-st.sidebar.caption("Affects Analytics tab only")
+st.sidebar.subheader("📊 Dashboard / EDA filter")
+st.sidebar.caption("Affects Dashboard tab only (NOT recommendations).")
 
 type_filter = st.sidebar.multiselect(
     "Filter by type",
@@ -742,8 +779,8 @@ type_filter = st.sidebar.multiselect(
     default=[]
 )
 
-eda_min_rating = st.sidebar.slider("Min rating", 0.0, 10.0, 0.0, 0.1)
-eda_max_rating = st.sidebar.slider("Max rating", 0.0, 10.0, 10.0, 0.1)
+eda_min_rating = st.sidebar.slider("EDA Min rating", 0.0, 10.0, 0.0, 0.1)
+eda_max_rating = st.sidebar.slider("EDA Max rating", 0.0, 10.0, 10.0, 0.1)
 if eda_min_rating > eda_max_rating:
     eda_min_rating, eda_max_rating = eda_max_rating, eda_min_rating
 
@@ -757,125 +794,89 @@ eda_df = eda_df[(eda_df["rating"] >= eda_min_rating) & (eda_df["rating"] <= eda_
 # -----------------------------
 # Tabs
 # -----------------------------
-tab1, tab2 = st.tabs(["🎯 Recommendations", "📊 Analytics"])
+tab1, tab2 = st.tabs(["✨ Recommend", "📈 Dashboard / EDA"])
 
 
 # -----------------------------
-# Recommendations Tab
+# Recommend tab
 # -----------------------------
 with tab1:
-    # Trending section
-    st.subheader("🔥 Trending Now")
-    st.caption("Based on rating × popularity score")
-    
-    trending_df = top_trending(anime, n=10)
-    st.dataframe(
-        trending_df,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "name": "Anime Title",
-            "type": "Format",
-            "rating": st.column_config.NumberColumn("Rating", format="%.2f"),
-            "members": st.column_config.NumberColumn("Members", format="%d"),
-            "trend_score": st.column_config.NumberColumn("Trend Score", format="%.3f")
-        }
-    )
+    st.subheader("🔥 Top Trending (dataset-based)")
+    st.caption("Trending score = rating × log10(members + 1)")
+    st.dataframe(top_trending(anime, n=10), use_container_width=True, hide_index=True)
 
-    st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)
-    
-    # Selected Anime section with X clear button
+    st.divider()
+    st.subheader("📌 Selected Anime + Recommendations")
+
     if st.session_state.selected_anime is not None:
-        # Create a container with title and X button
-        col_title, col_x = st.columns([20, 1])
-        with col_title:
-            st.subheader("📌 Selected Anime")
-        with col_x:
-            # Using columns to position the X button
-            x_col1, x_col2, x_col3 = st.columns([1, 1, 1])
-            with x_col2:
-                if st.button("✕", key="clear_x_btn", help="Clear selection"):
-                    request_clear_all()
+        if st.button("❌ Clear Selected Anime", use_container_width=True):
+            request_clear_all()
 
     if st.session_state.selected_anime is None:
-        st.info("👆 Select an anime from the sidebar to get recommendations")
+        st.info("👀 Use sidebar search or pick from Top Trending.")
     else:
         selected_name = st.session_state.selected_anime
         row = anime[anime["name"] == selected_name].iloc[0]
 
-        # Display anime title
-        st.markdown(f"<h3 style='margin-top: 0;'>{selected_name}</h3>", unsafe_allow_html=True)
-        
-        # Create two columns for poster and info
         left, right = st.columns([1, 2])
 
         with left:
-            with st.spinner("Loading..."):
+            with st.spinner("Fetching media…"):
                 poster_url, mal_url, trailer_url = fetch_media(selected_name)
 
             if poster_url:
-                st.image(poster_url, width=260)
+                st.image(poster_url, width=260, caption=selected_name)
+                if mal_url:
+                    st.markdown(f"[📝 Open on MyAnimeList]({mal_url})")
             else:
-                st.info("📷 Poster not available")
+                st.info("Poster not found.")
 
         with right:
-            # Metrics display
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("Rating", f"{row['rating']:.2f}" if pd.notna(row["rating"]) else "N/A")
-            
-            with col2:
-                st.metric("Type", str(row["type"]))
-            
-            with col3:
-                ep_count = int(row["episodes"]) if pd.notna(row["episodes"]) else "N/A"
-                st.metric("Episodes", ep_count)
-            
-            with col4:
-                members_count = f"{int(row['members']):,}" if pd.notna(row["members"]) else "N/A"
-                st.metric("Members", members_count)
-            
-            # Genre tags
-            st.markdown("**Genres**")
-            if row['genre'] and row['genre'] != "":
-                genres = row['genre'].split(', ')
-                genre_html = ""
-                for genre in genres:
-                    genre_html += f"<span class='genre-tag'>{genre}</span>"
-                st.markdown(genre_html, unsafe_allow_html=True)
-            else:
-                st.markdown("*No genre data available*")
-            
-            # Links
-            if mal_url:
-                st.markdown(f"[View on MyAnimeList]({mal_url})")
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Rating", f"{row['rating']:.2f}" if pd.notna(row["rating"]) else "N/A")
+            c2.metric("Type", str(row["type"]))
+            c3.metric("Episodes", int(row["episodes"]) if pd.notna(row["episodes"]) else "N/A")
+            c4.metric("Members", f"{int(row['members']):,}" if pd.notna(row["members"]) else "N/A")
+            st.write(f"**Genre:** {row['genre'] if row['genre'] else 'N/A'}")
 
-        # Video Trailer Section
-        st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)
-        st.subheader("🎬 Trailer")
+        # ✅ Video Trailer Section
+        st.divider()
+        st.subheader("🎬 Trailer / Preview")
+        
+        # Create a container for the video
+        st.markdown('<div class="video-container">', unsafe_allow_html=True)
         
         if trailer_url and ("youtube.com" in trailer_url or "youtu.be" in trailer_url):
+            # Play the video directly in the app
             st.video(trailer_url)
-            if YOUTUBE_API_KEY:
-                st.caption("via YouTube API")
-        else:
-            st.info("📺 No trailer found")
             
+            # Show source info
+            if YOUTUBE_API_KEY and "googleapis" not in str(trailer_url):
+                st.caption("🎥 Found via YouTube API")
+            else:
+                st.caption("🎥 Found via YouTube search")
+        else:
+            # No trailer found - show options
+            st.info("📺 No trailer automatically found")
+            
+            # Create columns for action buttons
             col1, col2 = st.columns(2)
+            
             with col1:
+                # YouTube search link
                 search_query = f"{selected_name} anime official trailer"
                 youtube_search = f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
-                st.markdown(f"[Search YouTube]({youtube_search})")
+                st.markdown(f"[🔍 Search YouTube]({youtube_search})")
+            
             with col2:
                 if mal_url:
-                    st.markdown(f"[MyAnimeList]({mal_url})")
-
-        st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)
-        st.subheader("✨ Similar Anime")
-        st.caption(f"Based on genre similarity")
+                    st.markdown(f"[📝 Check MyAnimeList]({mal_url})")
         
-        with st.spinner("Generating recommendations..."):
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.divider()
+        st.subheader("✨ Recommendations (TF-IDF similarity)")
+        with st.spinner("Generating recommendations…"):
             recs = recommend(selected_name, top_n=top_n)
 
         st.dataframe(
@@ -883,163 +884,151 @@ with tab1:
             use_container_width=True,
             hide_index=True,
             column_config={
-                "name": "Anime Title",
-                "genre": "Genres",
-                "type": "Format",
-                "rating": st.column_config.NumberColumn("Rating", format="%.2f"),
-                "episodes": "Episodes",
-                "members": st.column_config.NumberColumn("Members", format="%d"),
                 "similarity": st.column_config.ProgressColumn(
-                    "Match", 
-                    min_value=0.0, 
-                    max_value=1.0, 
-                    format="%.3f"
+                    "Confidence", min_value=0.0, max_value=1.0, format="%.3f"
                 )
             },
         )
 
 
 # -----------------------------
-# Analytics Dashboard Tab
+# Dashboard / EDA tab
 # -----------------------------
 with tab2:
-    st.subheader("📊 Analytics Dashboard")
+    st.subheader("📊 Dashboard / EDA (Clean)")
     st.caption(
         f"Type: {', '.join(type_filter) if type_filter else 'All'} | "
         f"Rating: {eda_min_rating:.1f}–{eda_max_rating:.1f}"
     )
 
-    # Key metrics
     total_anime = len(eda_df)
     avg_rating = pd.to_numeric(eda_df["rating"], errors="coerce").dropna().mean()
     avg_members = pd.to_numeric(eda_df["members"], errors="coerce").dropna().mean()
 
     m1, m2, m3 = st.columns(3)
-    m1.metric("Total Anime", f"{total_anime:,}")
-    m2.metric("Avg Rating", f"{avg_rating:.2f}" if not np.isnan(avg_rating) else "N/A")
-    m3.metric("Avg Members", f"{int(avg_members):,}" if not np.isnan(avg_members) else "N/A")
+    m1.metric("Anime count", f"{total_anime:,}")
+    m2.metric("Avg rating", f"{avg_rating:.2f}" if not np.isnan(avg_rating) else "N/A")
+    m3.metric("Avg members", f"{int(avg_members):,}" if not np.isnan(avg_members) else "N/A")
 
-    st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)
+    st.divider()
 
     # 1) Rating Distribution
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("#### Rating Distribution")
-        fig = plt.figure(figsize=(8, 4), facecolor='#0f1219')
+    g1, e1 = st.columns([3, 1])
+    with g1:
+        st.markdown("### Rating Distribution")
+        fig = plt.figure(figsize=(8, 4), facecolor='none')
         ax = fig.add_subplot(111)
-        ax.set_facecolor('#1f2937')
-        ratings = pd.to_numeric(eda_df["rating"], errors="coerce").dropna()
-        sns.histplot(ratings, bins=20, kde=True, color='#60a5fa', alpha=0.6)
-        plt.xlabel("Rating", color='#9ca3af')
-        plt.ylabel("Count", color='#9ca3af')
-        plt.tick_params(colors='#9ca3af')
-        plt.grid(alpha=0.2, color='#374151')
+        ax.set_facecolor('none')
+        sns.histplot(pd.to_numeric(eda_df["rating"], errors="coerce").dropna(), bins=20, kde=True, color='gold')
+        plt.xlabel("Rating", color='#b0b8cc')
+        plt.ylabel("Count", color='#b0b8cc')
+        plt.tick_params(colors='#b0b8cc')
+        plt.tight_layout()
         st.pyplot(fig)
         plt.close()
-    with col2:
+    with e1:
         st.markdown(
             """
             <div class="explain-box">
-                <strong>Distribution</strong><br>
-                Shows how ratings are spread.
+              🌟 Shows how ratings are distributed.<br/>
+              The peak is the most common rating range.
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)
+    st.divider()
 
     # 2) Avg Rating by Type
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("#### Average Rating by Type")
+    g2, e2 = st.columns([3, 1])
+    with g2:
+        st.markdown("### Average Rating by Type")
         temp = eda_df.dropna(subset=["rating"]).groupby("type")["rating"].mean().sort_values(ascending=False)
-        fig = plt.figure(figsize=(8, 4), facecolor='#0f1219')
+        fig = plt.figure(figsize=(8, 4), facecolor='none')
         ax = fig.add_subplot(111)
-        ax.set_facecolor('#1f2937')
-        plt.bar(temp.index.astype(str), temp.values, color='#60a5fa', alpha=0.6)
-        plt.xticks(rotation=35, ha='right', color='#9ca3af')
-        plt.ylabel("Avg Rating", color='#9ca3af')
-        plt.tick_params(colors='#9ca3af')
-        plt.grid(axis='y', alpha=0.2, color='#374151')
+        ax.set_facecolor('none')
+        plt.bar(temp.index.astype(str), temp.values, color='#ffb347', edgecolor='gold')
+        plt.xticks(rotation=35, ha="right", color='#b0b8cc')
+        plt.ylabel("Avg Rating", color='#b0b8cc')
+        plt.tick_params(colors='#b0b8cc')
+        plt.tight_layout()
         st.pyplot(fig)
         plt.close()
-    with col2:
+    with e2:
         st.markdown(
             """
             <div class="explain-box">
-                <strong>Format Comparison</strong><br>
-                Average rating by anime type.
+              📺 Compares average rating across formats.<br/>
+              Useful to justify type-wise differences.
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)
+    st.divider()
 
     # 3) Rating vs Members
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("#### Rating vs Popularity")
+    g3, e3 = st.columns([3, 1])
+    with g3:
+        st.markdown("### Rating vs Members (log scale)")
         temp = eda_df.dropna(subset=["rating", "members"]).copy()
-        fig = plt.figure(figsize=(8, 4), facecolor='#0f1219')
+        fig = plt.figure(figsize=(8, 4), facecolor='none')
         ax = fig.add_subplot(111)
-        ax.set_facecolor('#1f2937')
-        plt.scatter(temp["members"], temp["rating"], alpha=0.5, color='#60a5fa', s=20)
+        ax.set_facecolor('none')
+        plt.scatter(temp["members"], temp["rating"], alpha=0.65, color='#6a5acd', edgecolor='white', s=30)
         plt.xscale("log")
-        plt.xlabel("Members (log scale)", color='#9ca3af')
-        plt.ylabel("Rating", color='#9ca3af')
-        plt.tick_params(colors='#9ca3af')
-        plt.grid(alpha=0.2, color='#374151')
+        plt.xlabel("Members (log scale)", color='#b0b8cc')
+        plt.ylabel("Rating", color='#b0b8cc')
+        plt.tick_params(colors='#b0b8cc')
+        plt.tight_layout()
         st.pyplot(fig)
         plt.close()
-    with col2:
+    with e3:
         st.markdown(
             """
             <div class="explain-box">
-                <strong>Popularity vs Quality</strong><br>
-                Log scale shows all data.
+              📈 Shows popularity vs rating pattern.<br/>
+              Log scale helps compare small & huge anime.
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)
+    st.divider()
 
     # 4) Correlation Heatmap
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("#### Correlation Matrix")
+    g4, e4 = st.columns([3, 1])
+    with g4:
+        st.markdown("### Correlation Heatmap")
         corr_df = eda_df[["rating", "members", "episodes"]].copy().dropna()
         if len(corr_df) >= 3:
-            fig = plt.figure(figsize=(6.5, 4), facecolor='#0f1219')
+            fig = plt.figure(figsize=(6.5, 4), facecolor='none')
             ax = fig.add_subplot(111)
-            ax.set_facecolor('#1f2937')
-            corr = corr_df.corr()
-            sns.heatmap(corr, annot=True, cmap='coolwarm', fmt=".2f", linewidths=1, 
-                       cbar_kws={'label': 'Correlation'})
-            plt.tick_params(colors='#9ca3af')
+            ax.set_facecolor('none')
+            sns.heatmap(corr_df.corr(), annot=True, cmap="coolwarm", fmt=".2f", 
+                        cbar_kws={'label': 'Correlation'}, ax=ax)
+            plt.tight_layout()
             st.pyplot(fig)
             plt.close()
         else:
-            st.info("Not enough data")
-    with col2:
+            st.info("Not enough data after filtering to compute correlations.")
+    with e4:
         st.markdown(
             """
             <div class="explain-box">
-                <strong>Relationships</strong><br>
-                Values near ±1 = strong link.
+              🔗 Measures relationships between numeric fields.<br/>
+              Values near ±1 mean stronger association.
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)
+    st.divider()
 
     # 5) Top Genres
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("#### Top Genres")
+    g5, e5 = st.columns([3, 1])
+    with g5:
+        st.markdown("### Top Genres (Count)")
         genres = (
             eda_df["genre"]
             .fillna("")
@@ -1052,24 +1041,33 @@ with tab2:
         top_g = genres.value_counts().head(15)
 
         if not top_g.empty:
-            fig = plt.figure(figsize=(8, 4), facecolor='#0f1219')
+            fig = plt.figure(figsize=(8, 4), facecolor='none')
             ax = fig.add_subplot(111)
-            ax.set_facecolor('#1f2937')
-            plt.barh(top_g.index[::-1], top_g.values[::-1], color='#60a5fa', alpha=0.6)
-            plt.xlabel("Count", color='#9ca3af')
-            plt.tick_params(colors='#9ca3af')
-            plt.grid(axis='x', alpha=0.2, color='#374151')
+            ax.set_facecolor('none')
+            plt.barh(top_g.index[::-1], top_g.values[::-1], color='#77dd77', edgecolor='white')
+            plt.xlabel("Count", color='#b0b8cc')
+            plt.tick_params(colors='#b0b8cc')
+            plt.tight_layout()
             st.pyplot(fig)
             plt.close()
         else:
-            st.info("No genres available")
-    with col2:
+            st.info("No genres available after filtering.")
+    with e5:
         st.markdown(
             """
             <div class="explain-box">
-                <strong>Genre Popularity</strong><br>
-                Most common genres.
+              🎭 Shows most common genres in the dataset.<br/>
+              Helps explain dataset bias toward certain genres.
             </div>
             """,
             unsafe_allow_html=True,
         )
+
+# -----------------------------
+# Footer
+# -----------------------------
+st.divider()
+st.markdown(
+    "<p style='text-align: center; color: #9ca3af;'>✨ crafted with 💜 for anime lovers • TF‑IDF + Cosine Similarity</p>",
+    unsafe_allow_html=True,
+)
