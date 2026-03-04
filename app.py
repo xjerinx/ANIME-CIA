@@ -2,16 +2,18 @@ import html
 import re
 import requests
 import os
+import random
+from collections import Counter
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
+from wordcloud import WordCloud
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from difflib import SequenceMatcher
 
 # YouTube API imports
 from googleapiclient.discovery import build
@@ -21,50 +23,38 @@ from googleapiclient.errors import HttpError
 # -----------------------------
 # Page config
 # -----------------------------
-st.set_page_config(page_title="Anime Recommender", page_icon="🎌", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="AnimeVerse Recommender",
+    page_icon="✨",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 
 # -----------------------------
-# YouTube API Setup
+# YouTube API Setup (unchanged)
 # -----------------------------
 def get_youtube_api_key():
-    """Get YouTube API key from Streamlit secrets"""
     try:
         return st.secrets["youtube_api_key"]
     except:
         return None
 
-# Initialize YouTube API key
 YOUTUBE_API_KEY = get_youtube_api_key()
 
-# Debug: Show API key status in sidebar
-if YOUTUBE_API_KEY:
-    st.sidebar.success("✅ YouTube API Connected")
-else:
-    st.sidebar.warning("⚠️ YouTube API key not found. Using basic search.")
 
-
-# -----------------------------
-# YouTube API Functions
-# -----------------------------
 @st.cache_data(ttl=24 * 3600)
 def search_youtube_trailer(anime_name):
-    """Search YouTube for anime trailer using API"""
     if not YOUTUBE_API_KEY:
         return None
-    
     try:
-        # Build YouTube API client
         youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY, cache_discovery=False)
-        
-        # Try multiple search queries
         search_queries = [
             f"{anime_name} official trailer",
             f"{anime_name} anime trailer",
-            f"{anime_name} PV",  # PV = Promotional Video
+            f"{anime_name} PV",
             anime_name
         ]
-        
         for query in search_queries:
             search_response = youtube.search().list(
                 q=query,
@@ -73,14 +63,11 @@ def search_youtube_trailer(anime_name):
                 maxResults=1,
                 videoEmbeddable='true'
             ).execute()
-            
             items = search_response.get('items', [])
             if items:
                 video_id = items[0]['id']['videoId']
                 return f"https://www.youtube.com/watch?v={video_id}"
-        
         return None
-        
     except Exception as e:
         print(f"YouTube search error: {e}")
         return None
@@ -88,36 +75,24 @@ def search_youtube_trailer(anime_name):
 
 @st.cache_data(ttl=24 * 3600)
 def fetch_youtube_trailer_fallback(anime_name):
-    """Fallback method using web scraping (no API key needed)"""
     try:
-        # Clean the anime name for URL
         clean_name = re.sub(r'[^\w\s-]', '', anime_name)
         clean_name = clean_name.strip().replace(' ', '+')
-        
-        # Try different search patterns
         search_patterns = [
             f"{clean_name}+official+trailer",
             f"{clean_name}+anime+trailer",
             f"{clean_name}+pv",
             clean_name
         ]
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        
+        headers = {'User-Agent': 'Mozilla/5.0'}
         for pattern in search_patterns:
             search_url = f"https://www.youtube.com/results?search_query={pattern}"
             response = requests.get(search_url, headers=headers, timeout=10)
-            
             if response.status_code == 200:
-                # Look for video IDs in the response
                 video_pattern = r'"videoId":"([a-zA-Z0-9_-]{11})"'
                 matches = re.findall(video_pattern, response.text)
-                
                 if matches:
                     return f"https://www.youtube.com/watch?v={matches[0]}"
-        
         return None
     except Exception as e:
         print(f"Fallback error: {e}")
@@ -125,388 +100,166 @@ def fetch_youtube_trailer_fallback(anime_name):
 
 
 # -----------------------------
-# Theme toggle + Global Styling
+# ENHANCED CREATIVE CSS (with animations and neon accents)
 # -----------------------------
-dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
-
-# ======================
-# ENHANCED CREATIVE CSS
-# ======================
-BASE_SIDEBAR_CSS = """
-<style>
-  /* Import anime-style font */
-  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Righteous&display=swap');
-
-  /* Global font override */
-  * { font-family: 'Poppins', sans-serif; }
-
-  /* Sidebar always dark with glass effect */
-  section[data-testid="stSidebar"]{
-    background: rgba(10, 14, 22, 0.95) !important;
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
-    border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
-    box-shadow: 4px 0 25px rgba(0,0,0,0.5);
-  }
-  section[data-testid="stSidebar"] *{ color:#f0f3fa !important; }
-  section[data-testid="stSidebar"] .stCaption,
-  section[data-testid="stSidebar"] p,
-  section[data-testid="stSidebar"] small{
-    color: #b0b8cc !important;
-  }
-
-  /* Sidebar input with glow */
-  section[data-testid="stSidebar"] div[data-baseweb="input"] input{
-    background-color: #1e2638 !important;
-    color: #ffffff !important;
-    border: 1px solid rgba(255,215,0,0.3) !important;
-    border-radius: 30px !important;
-    padding: 12px 18px !important;
-    font-weight: 400;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  }
-  section[data-testid="stSidebar"] div[data-baseweb="input"] input:focus{
-    border-color: gold !important;
-    box-shadow: 0 0 0 3px rgba(255,215,0,0.2) !important;
-  }
-  section[data-testid="stSidebar"] div[data-baseweb="input"] input::placeholder{
-    color: #6a7299 !important;
-    font-style: italic;
-  }
-
-  /* Sidebar buttons */
-  .stButton > button {
-    background: linear-gradient(135deg, #2a2f45, #1a1f30);
-    border: 1px solid rgba(255,215,0,0.3);
-    border-radius: 40px;
-    color: #f0f3fa;
-    font-weight: 600;
-    padding: 10px 24px;
-    transition: all 0.2s ease;
-    box-shadow: 0 6px 14px rgba(0,0,0,0.3);
-  }
-  .stButton > button:hover {
-    transform: translateY(-2px);
-    background: linear-gradient(135deg, #3a405a, #2a2f45);
-    border-color: gold;
-    box-shadow: 0 12px 20px rgba(0,0,0,0.4);
-  }
-
-  /* Sidebar sliders / selects */
-  div[data-testid="stSlider"] {
-    padding: 10px 0;
-  }
-  div[data-testid="stMultiSelect"] > div {
-    background-color: #1e2638 !important;
-    border-radius: 30px;
-    border: 1px solid rgba(255,215,0,0.2);
-  }
-
-  /* Compact trending cards - anime vibe */
-  .trend-card{
-    background: rgba(20, 25, 40, 0.7);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,215,0,0.15);
-    border-radius: 24px;
-    padding: 10px 8px 12px 8px;
-    margin-bottom: 16px;
-    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2);
-    box-shadow: 0 10px 20px -5px rgba(0,0,0,0.5);
-  }
-  .trend-card:hover{
-    transform: scale(1.02) translateY(-5px);
-    border-color: rgba(255,215,0,0.5);
-    box-shadow: 0 18px 30px -5px rgba(255,215,0,0.2);
-    background: rgba(30, 35, 55, 0.9);
-  }
-  .trend-img{
-    width:100%;
-    height:130px;
-    border-radius:18px;
-    overflow:hidden;
-    background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.1);
-  }
-  .trend-img img{
-    width:100%;
-    height:130px;
-    object-fit:cover;
-    display:block;
-    transition: transform 0.5s ease;
-  }
-  .trend-card:hover .trend-img img{
-    transform: scale(1.1);
-  }
-  .trend-title{
-    font-size: 0.82rem;
-    line-height: 1.2;
-    font-weight: 600;
-    color: #f0e6d0;
-    text-align:center;
-    white-space: nowrap;
-    overflow:hidden;
-    text-overflow: ellipsis;
-    margin: 10px 4px 6px 4px;
-    letter-spacing: 0.3px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-  }
-  
-  /* Video container styling */
-  .video-container {
-    border-radius: 24px;
-    overflow: hidden;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,215,0,0.2);
-    margin: 25px 0;
-    transition: box-shadow 0.3s;
-  }
-  .video-container:hover {
-    box-shadow: 0 25px 50px rgba(255,215,0,0.2), 0 0 0 3px gold;
-  }
-  
-  /* Explanation box with anime quote feel */
-  .explain-box{
-    background: rgba(20, 25, 45, 0.75);
-    backdrop-filter: blur(6px);
-    border: 1px solid rgba(255,215,0,0.25);
-    border-radius: 24px;
-    padding: 16px 20px;
-    color: #d0d8f0;
-    font-size: 0.95rem;
-    font-style: italic;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-    border-left: 5px solid gold;
-  }
-
-  /* Metrics cards with glass */
-  div[data-testid="stMetric"] {
-    background: rgba(20, 25, 45, 0.7) !important;
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,215,0,0.2);
-    border-radius: 28px !important;
-    padding: 16px 10px !important;
-    box-shadow: 0 15px 30px rgba(0,0,0,0.4);
-    transition: transform 0.2s;
-  }
-  div[data-testid="stMetric"]:hover {
-    transform: translateY(-5px);
-    border-color: gold;
-  }
-
-  /* DataFrames with rounded glass */
-  .stDataFrame, [data-testid="stDataFrame"]{
-    border-radius: 24px !important;
-    overflow: hidden;
-    border: 1px solid rgba(255,215,0,0.2);
-    background: rgba(20, 25, 45, 0.6) !important;
-    backdrop-filter: blur(4px);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.3);
-  }
-
-  /* Custom header glow */
-  h1, h2, h3 {
-    text-shadow: 0 2px 10px rgba(255,215,0,0.3);
-    letter-spacing: 0.5px;
-  }
-  h1 {
-    font-family: 'Righteous', cursive;
-    font-size: 3rem !important;
-    background: linear-gradient(135deg, #fff8e7, #ffd966);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 0.2rem;
-  }
-  .stCaption {
-    font-size: 1rem;
-    color: #a0a8c0 !important;
-  }
-</style>
-"""
-
-if dark_mode:
-    st.markdown(
-        """
-        <style>
-          :root{
-            --bg: radial-gradient(circle at 30% 10%, #141b2b, #0a0f1a);
-            --text: #f0f3fa;
-            --muted: #b0b8cc;
-            --border: rgba(255,215,0,0.2);
-            --card-bg: rgba(20, 25, 45, 0.6);
-          }
-
-          .stApp{
-            background: var(--bg);
-            color: var(--text);
-          }
-          .block-container{
-            padding-top: 1.8rem;
-            padding-bottom: 3rem;
-            backdrop-filter: blur(2px);
-          }
-
-          h1,h2,h3,h4,h5,h6{color: var(--text);}
-          .stCaption,p,li{color: var(--muted);}
-          a{color: #ffd966; font-weight: 500;}
-
-          /* Tabs styling */
-          button[data-baseweb="tab"] {
-            background: rgba(20,25,45,0.5) !important;
-            border-radius: 40px !important;
-            margin: 0 5px;
-            border: 1px solid rgba(255,215,0,0.2) !important;
-            color: #d0d8f0 !important;
-            font-weight: 600;
-            backdrop-filter: blur(8px);
-          }
-          button[data-baseweb="tab"][aria-selected="true"] {
-            background: rgba(255,215,0,0.2) !important;
-            border-color: gold !important;
-            color: white !important;
-          }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-else:
-    st.markdown(
-        """
-        <style>
-          :root{
-            --bg: linear-gradient(145deg, #f8f3ff, #e6ecff);
-            --text: #1e2438;
-            --muted: #3f4a6b;
-            --border: rgba(106, 90, 205, 0.2);
-            --card-bg: rgba(255,255,255,0.7);
-          }
-
-          .stApp{
-            background: var(--bg);
-            color: var(--text);
-          }
-          .block-container{
-            padding-top: 1.8rem;
-            padding-bottom: 3rem;
-            backdrop-filter: blur(2px);
-          }
-
-          h1,h2,h3,h4,h5,h6{color: #1e1a36;}
-          .stCaption,p,li{color: #4a5180;}
-          a{color: #6a4fe0; font-weight: 600;}
-
-          /* Light mode metric cards */
-          div[data-testid="stMetric"]{
-            background: rgba(255,255,255,0.7) !important;
+def apply_custom_css(dark_mode):
+    base_css = """
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&family=Righteous&display=swap');
+        
+        * { font-family: 'Poppins', sans-serif; }
+        
+        /* Animated gradient background */
+        .stApp {
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            position: relative;
+        }
+        .stApp::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            pointer-events: none;
+        }
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Glassmorphism containers */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 30px;
+            padding: 1.5rem;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border-color: rgba(255,215,0,0.5);
+        }
+        
+        /* Neon text effect */
+        .neon-text {
+            text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #ff00de, 0 0 30px #ff00de;
+        }
+        
+        /* Title with glow */
+        h1 {
+            font-family: 'Righteous', cursive;
+            font-size: 4rem !important;
+            background: linear-gradient(135deg, #ffe6b0, #ffb347, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: titleGlow 3s ease-in-out infinite;
+        }
+        @keyframes titleGlow {
+            0% { filter: drop-shadow(0 0 5px #ffb347); }
+            50% { filter: drop-shadow(0 0 20px #ff6b6b); }
+            100% { filter: drop-shadow(0 0 5px #ffb347); }
+        }
+        
+        /* Sidebar glass */
+        section[data-testid="stSidebar"] {
+            background: rgba(10, 14, 23, 0.8) !important;
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border-right: 1px solid rgba(255,215,0,0.2);
+        }
+        
+        /* Cards for recommendations */
+        .rec-card {
+            background: rgba(20, 25, 45, 0.7);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(106,90,205,0.2);
-            border-radius: 28px !important;
-            box-shadow: 0 15px 30px rgba(60,50,100,0.1);
-          }
-
-          /* Light mode tabs */
-          button[data-baseweb="tab"] {
-            background: rgba(255,255,255,0.6) !important;
-            border-radius: 40px !important;
-            margin: 0 5px;
-            border: 1px solid rgba(106,90,205,0.3) !important;
-            color: #2d2f6e !important;
+            border-radius: 24px;
+            padding: 15px;
+            border: 1px solid rgba(255,215,0,0.2);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .rec-card:hover {
+            transform: scale(1.03) translateY(-8px);
+            border-color: gold;
+            box-shadow: 0 20px 30px -10px rgba(255,215,0,0.3);
+        }
+        .rec-img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 18px;
+            margin-bottom: 12px;
+            border: 2px solid rgba(255,215,0,0.3);
+            transition: border 0.3s;
+        }
+        .rec-card:hover .rec-img {
+            border-color: gold;
+        }
+        .rec-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: white;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .rec-similarity {
+            color: #ffd966;
+            font-size: 0.9rem;
             font-weight: 600;
-            backdrop-filter: blur(8px);
-          }
-          button[data-baseweb="tab"][aria-selected="true"] {
-            background: rgba(106,90,205,0.2) !important;
-            border-color: #6a4fe0 !important;
-            color: #2b1b6e !important;
-          }
-
-          /* DataFrames light */
-          .stDataFrame, [data-testid="stDataFrame"]{
-            background: rgba(255,255,255,0.7) !important;
-            border: 1px solid rgba(106,90,205,0.2);
-          }
-          .explain-box{
-            background: rgba(255,255,255,0.7);
-            border-left: 5px solid #6a4fe0;
-            color: #2b1b6e;
-          }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# Apply always-on sidebar/trending css
-st.markdown(BASE_SIDEBAR_CSS, unsafe_allow_html=True)
-
-
-# -----------------------------
-# Header with anime vibe
-# -----------------------------
-st.markdown(
+            margin-top: auto;
+        }
+        
+        /* Button styling */
+        .stButton > button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            padding: 10px 30px;
+            transition: all 0.3s;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .stButton > button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(102,126,234,0.4);
+        }
+        
+        /* Metric cards */
+        div[data-testid="stMetric"] {
+            background: rgba(20, 25, 45, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,215,0,0.2);
+            border-radius: 30px !important;
+            padding: 15px !important;
+            transition: transform 0.3s;
+        }
+        div[data-testid="stMetric"]:hover {
+            transform: translateY(-5px);
+            border-color: gold;
+        }
+        
+        /* Progress column styling */
+        .stProgress > div > div {
+            background-color: gold !important;
+        }
+    </style>
     """
-    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: -10px;">
-        <h1>🎌 ANIME RECOMMENDER</h1>
-        <span style="font-size: 1.2rem; background: rgba(255,215,0,0.2); padding: 5px 15px; border-radius: 60px; border:1px solid gold;">✨ content-based</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-st.caption("Discover your next favorite anime with TF-IDF magic + interactive dashboard.")
+    st.markdown(base_css, unsafe_allow_html=True)
 
 
 # -----------------------------
-# Media fetch (Poster + MAL + Trailer) via Jikan API
-# -----------------------------
-@st.cache_data(ttl=24 * 3600)
-def fetch_media(anime_name):
-    """
-    Returns: (poster_url, mal_url, trailer_url)
-    - First tries MAL, then YouTube API, then fallback
-    """
-    poster = None
-    mal_url = None
-    trailer_url = None
-    
-    try:
-        # Try MAL first
-        url = "https://api.jikan.moe/v4/anime"
-        r = requests.get(url, params={"q": anime_name, "limit": 3}, timeout=10)
-        
-        if r.status_code == 200:
-            data = r.json().get("data", [])
-            if data:
-                # Get poster and MAL URL from first result
-                poster = data[0].get("images", {}).get("jpg", {}).get("image_url")
-                mal_url = data[0].get("url")
-                
-                # Check for trailer in all results
-                for item in data:
-                    trailer = item.get("trailer") or {}
-                    youtube_id = trailer.get("youtube_id")
-                    if youtube_id:
-                        trailer_url = f"https://www.youtube.com/watch?v={youtube_id}"
-                        break
-                    elif not trailer_url:
-                        trailer_url = trailer.get("url")
-        
-        # If MAL didn't have trailer, try YouTube API
-        if not trailer_url and YOUTUBE_API_KEY:
-            trailer_url = search_youtube_trailer(anime_name)
-        
-        # If still no trailer, try fallback
-        if not trailer_url:
-            trailer_url = fetch_youtube_trailer_fallback(anime_name)
-        
-        return poster, mal_url, trailer_url
-        
-    except Exception as e:
-        print(f"Error fetching media: {e}")
-        # Last resort - try fallback
-        return poster, mal_url, fetch_youtube_trailer_fallback(anime_name)
-
-
-# -----------------------------
-# Load + clean data
+# Data loading (unchanged)
 # -----------------------------
 def generate_sample_anime_data(n: int = 700, seed: int = 7) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
@@ -576,7 +329,7 @@ def load_data():
         df["rating"] = pd.to_numeric(df["rating"], errors="coerce")
         return df
     except Exception:
-        st.info("data/anime.csv not found (or failed). Using generated sample dataset.")
+        st.info("data/anime.csv not found. Using generated sample dataset.")
         return generate_sample_anime_data()
 
 
@@ -584,7 +337,7 @@ anime = load_data()
 
 
 # -----------------------------
-# FAST TF-IDF
+# TF-IDF (unchanged)
 # -----------------------------
 @st.cache_data
 def build_tfidf_matrix(genres: pd.Series):
@@ -592,8 +345,7 @@ def build_tfidf_matrix(genres: pd.Series):
     return tfidf.fit_transform(genres)
 
 
-with st.spinner("Building TF-IDF vectors…"):
-    X = build_tfidf_matrix(anime["genre"])
+X = build_tfidf_matrix(anime["genre"])
 
 
 def recommend(anime_name: str, top_n: int = 10) -> pd.DataFrame:
@@ -628,19 +380,59 @@ def shorten_title(title: str, max_len: int = 20) -> str:
 
 
 # -----------------------------
+# Media fetch (unchanged)
+# -----------------------------
+@st.cache_data(ttl=24 * 3600)
+def fetch_media(anime_name):
+    poster = None
+    mal_url = None
+    trailer_url = None
+    
+    try:
+        url = "https://api.jikan.moe/v4/anime"
+        r = requests.get(url, params={"q": anime_name, "limit": 3}, timeout=10)
+        
+        if r.status_code == 200:
+            data = r.json().get("data", [])
+            if data:
+                poster = data[0].get("images", {}).get("jpg", {}).get("image_url")
+                mal_url = data[0].get("url")
+                
+                for item in data:
+                    trailer = item.get("trailer") or {}
+                    youtube_id = trailer.get("youtube_id")
+                    if youtube_id:
+                        trailer_url = f"https://www.youtube.com/watch?v={youtube_id}"
+                        break
+                    elif not trailer_url:
+                        trailer_url = trailer.get("url")
+        
+        if not trailer_url and YOUTUBE_API_KEY:
+            trailer_url = search_youtube_trailer(anime_name)
+        
+        if not trailer_url:
+            trailer_url = fetch_youtube_trailer_fallback(anime_name)
+        
+        return poster, mal_url, trailer_url
+        
+    except Exception as e:
+        print(f"Error fetching media: {e}")
+        return poster, mal_url, fetch_youtube_trailer_fallback(anime_name)
+
+
+# -----------------------------
 # Session state
 # -----------------------------
 if "selected_anime" not in st.session_state:
     st.session_state.selected_anime = None
-
 if "clear_search" not in st.session_state:
     st.session_state.clear_search = False
-
 if "clear_trending" not in st.session_state:
     st.session_state.clear_trending = False
-
 if "trend_selected_idx" not in st.session_state:
     st.session_state.trend_selected_idx = None
+if "watchlist" not in st.session_state:
+    st.session_state.watchlist = []
 
 
 def request_clear_all():
@@ -661,7 +453,30 @@ def request_clear_search_only():
 
 
 # -----------------------------
-# Sidebar: Search
+# Apply CSS based on dark mode toggle (we keep dark mode as default but can be toggled)
+# -----------------------------
+dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
+apply_custom_css(dark_mode)
+
+
+# -----------------------------
+# Header with floating animation
+# -----------------------------
+st.markdown(
+    """
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+        <h1>✨ AnimeVerse</h1>
+        <div style="font-size: 1.5rem; background: rgba(255,255,255,0.1); padding: 8px 25px; border-radius: 60px; backdrop-filter: blur(10px); border:1px solid gold;">
+            🎌 content‑based recommender
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# -----------------------------
+# Sidebar: Search + Trending + New Random button
 # -----------------------------
 st.sidebar.header("🔎 Search Anime")
 
@@ -682,15 +497,20 @@ chosen_name = st.sidebar.selectbox(
 
 top_n = st.sidebar.slider("Number of recommendations", 5, 20, 10)
 
+# NEW: Random anime picker
+if st.sidebar.button("🎲 Random Anime", use_container_width=True):
+    random_anime = random.choice(anime_names)
+    st.session_state.selected_anime = random_anime
+    st.session_state.clear_trending = True
+    st.rerun()
+
 if chosen_name:
     poster_url, mal_url, trailer_url = fetch_media(chosen_name)
 
     if poster_url:
-        st.sidebar.image(poster_url, width=140, output_format="auto")
-
+        st.sidebar.image(poster_url, width=140)
     if mal_url:
         st.sidebar.markdown(f"[![MAL](https://img.icons8.com/color/24/000000/myanimelist.png) Open on MAL]({mal_url})")
-
     if trailer_url:
         st.sidebar.markdown(f"[▶️ Watch Trailer]({trailer_url})")
 
@@ -702,10 +522,10 @@ if chosen_name:
 
 
 # -----------------------------
-# Sidebar: Top 6 Trending
+# Sidebar: Top 6 Trending (cards)
 # -----------------------------
 st.sidebar.divider()
-st.sidebar.subheader("🔥 Top Trending (Top 6)")
+st.sidebar.subheader("🔥 Top Trending")
 
 trending6 = top_trending(anime, n=min(6, len(anime)))
 
@@ -731,30 +551,21 @@ for i, row in enumerate(trending6.itertuples(index=False)):
     short_name = shorten_title(name, 20)
 
     with cols[i % 3]:
-        st.markdown('<div class="trend-card">', unsafe_allow_html=True)
-
         st.markdown(
             f"""
-            <div class="trend-img" title="{html.escape(name)}">
-              <img src="{poster_url}" alt="{html.escape(name)}"/>
+            <div class="trend-card" style="cursor:pointer;" onclick="document.getElementById('trend_cb_{i}').click()">
+                <div class="trend-img">
+                    <img src="{poster_url}" alt="{html.escape(name)}">
+                </div>
+                <div class="trend-title">{html.escape(short_name)}</div>
+                <div style="font-size:0.7rem; color:gold;">⭐ {row.rating:.2f}</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-
-        st.markdown(
-            f"""
-            <div class="trend-title" title="{html.escape(name)}">
-              {html.escape(short_name)}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
         k = f"trend_cb_{i}"
         if k not in st.session_state:
             st.session_state[k] = (st.session_state.trend_selected_idx == i)
-
         st.checkbox(
             " ",
             key=k,
@@ -763,24 +574,21 @@ for i, row in enumerate(trending6.itertuples(index=False)):
             label_visibility="collapsed",
         )
 
-        st.markdown("</div>", unsafe_allow_html=True)
-
 
 # -----------------------------
-# EDA filter
+# Sidebar: EDA filters (unchanged)
 # -----------------------------
 st.sidebar.divider()
-st.sidebar.subheader("📊 Dashboard / EDA filter")
-st.sidebar.caption("Affects Dashboard tab only (NOT recommendations).")
+st.sidebar.subheader("📊 Dashboard Filters")
 
 type_filter = st.sidebar.multiselect(
-    "Filter by type",
+    "Type",
     sorted(anime["type"].dropna().unique()),
     default=[]
 )
 
-eda_min_rating = st.sidebar.slider("EDA Min rating", 0.0, 10.0, 0.0, 0.1)
-eda_max_rating = st.sidebar.slider("EDA Max rating", 0.0, 10.0, 10.0, 0.1)
+eda_min_rating = st.sidebar.slider("Min rating", 0.0, 10.0, 0.0, 0.1)
+eda_max_rating = st.sidebar.slider("Max rating", 0.0, 10.0, 10.0, 0.1)
 if eda_min_rating > eda_max_rating:
     eda_min_rating, eda_max_rating = eda_max_rating, eda_min_rating
 
@@ -792,13 +600,29 @@ eda_df = eda_df[(eda_df["rating"] >= eda_min_rating) & (eda_df["rating"] <= eda_
 
 
 # -----------------------------
-# Tabs
+# NEW: Watchlist feature
 # -----------------------------
-tab1, tab2 = st.tabs(["✨ Recommend", "📈 Dashboard / EDA"])
+st.sidebar.divider()
+st.sidebar.subheader("📋 My Watchlist")
+if st.session_state.watchlist:
+    for anime_name in st.session_state.watchlist:
+        col1, col2 = st.sidebar.columns([3, 1])
+        col1.write(f"• {anime_name}")
+        if col2.button("❌", key=f"remove_{anime_name}"):
+            st.session_state.watchlist.remove(anime_name)
+            st.rerun()
+else:
+    st.sidebar.caption("Empty. Add from recommendations.")
 
 
 # -----------------------------
-# Recommend tab
+# Tabs: Recommend, Dashboard, Explore (new)
+# -----------------------------
+tab1, tab2, tab3 = st.tabs(["✨ Recommend", "📈 Analytics", "🔍 Genre Explorer"])
+
+
+# -----------------------------
+# Tab 1: Recommend (enhanced)
 # -----------------------------
 with tab1:
     st.subheader("🔥 Top Trending (dataset-based)")
@@ -806,100 +630,120 @@ with tab1:
     st.dataframe(top_trending(anime, n=10), use_container_width=True, hide_index=True)
 
     st.divider()
-    st.subheader("📌 Selected Anime + Recommendations")
+    st.subheader("📌 Selected Anime")
 
     if st.session_state.selected_anime is not None:
-        if st.button("❌ Clear Selected Anime", use_container_width=True):
+        if st.button("❌ Clear Selection", use_container_width=True):
             request_clear_all()
 
     if st.session_state.selected_anime is None:
-        st.info("👀 Use sidebar search or pick from Top Trending.")
+        st.info("👀 Use sidebar search, pick from Trending, or click **Random Anime**.")
     else:
         selected_name = st.session_state.selected_anime
         row = anime[anime["name"] == selected_name].iloc[0]
 
-        left, right = st.columns([1, 2])
+        # Display selected anime in a glass card
+        with st.container():
+            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+            left, right = st.columns([1, 2])
 
-        with left:
-            with st.spinner("Fetching media…"):
-                poster_url, mal_url, trailer_url = fetch_media(selected_name)
+            with left:
+                with st.spinner("Fetching media…"):
+                    poster_url, mal_url, trailer_url = fetch_media(selected_name)
 
-            if poster_url:
-                st.image(poster_url, width=260, caption=selected_name)
+                if poster_url:
+                    st.image(poster_url, width=260, caption=selected_name)
+                else:
+                    st.info("Poster not found.")
+
                 if mal_url:
                     st.markdown(f"[📝 Open on MyAnimeList]({mal_url})")
-            else:
-                st.info("Poster not found.")
 
-        with right:
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Rating", f"{row['rating']:.2f}" if pd.notna(row["rating"]) else "N/A")
-            c2.metric("Type", str(row["type"]))
-            c3.metric("Episodes", int(row["episodes"]) if pd.notna(row["episodes"]) else "N/A")
-            c4.metric("Members", f"{int(row['members']):,}" if pd.notna(row["members"]) else "N/A")
-            st.write(f"**Genre:** {row['genre'] if row['genre'] else 'N/A'}")
+                # Add to watchlist button
+                if st.button("➕ Add to Watchlist", key="add_watchlist"):
+                    if selected_name not in st.session_state.watchlist:
+                        st.session_state.watchlist.append(selected_name)
+                        st.success("Added!")
+                        st.rerun()
 
-        # ✅ Video Trailer Section
+            with right:
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Rating", f"{row['rating']:.2f}" if pd.notna(row["rating"]) else "N/A")
+                c2.metric("Type", str(row["type"]))
+                c3.metric("Episodes", int(row["episodes"]) if pd.notna(row["episodes"]) else "N/A")
+                c4.metric("Members", f"{int(row['members']):,}" if pd.notna(row["members"]) else "N/A")
+                st.write(f"**Genre:** {row['genre'] if row['genre'] else 'N/A'}")
+
+                # Mini genre distribution (placeholder)
+                if row['genre']:
+                    genres = [g.strip() for g in row['genre'].split(',')]
+                    st.markdown("**Genre tags:**")
+                    cols = st.columns(len(genres))
+                    for i, g in enumerate(genres):
+                        cols[i].markdown(f"<span style='background:rgba(255,215,0,0.2); padding:3px 10px; border-radius:30px;'>{g}</span>", unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # Trailer section
         st.divider()
         st.subheader("🎬 Trailer / Preview")
-        
-        # Create a container for the video
         st.markdown('<div class="video-container">', unsafe_allow_html=True)
-        
         if trailer_url and ("youtube.com" in trailer_url or "youtu.be" in trailer_url):
-            # Play the video directly in the app
             st.video(trailer_url)
-            
-            # Show source info
-            if YOUTUBE_API_KEY and "googleapis" not in str(trailer_url):
-                st.caption("🎥 Found via YouTube API")
-            else:
-                st.caption("🎥 Found via YouTube search")
+            st.caption("🎥 Found via YouTube API" if YOUTUBE_API_KEY else "🎥 Found via YouTube search")
         else:
-            # No trailer found - show options
             st.info("📺 No trailer automatically found")
-            
-            # Create columns for action buttons
             col1, col2 = st.columns(2)
-            
             with col1:
-                # YouTube search link
                 search_query = f"{selected_name} anime official trailer"
                 youtube_search = f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
                 st.markdown(f"[🔍 Search YouTube]({youtube_search})")
-            
             with col2:
                 if mal_url:
                     st.markdown(f"[📝 Check MyAnimeList]({mal_url})")
-        
         st.markdown('</div>', unsafe_allow_html=True)
 
+        # Recommendations as beautiful cards
         st.divider()
         st.subheader("✨ Recommendations (TF-IDF similarity)")
         with st.spinner("Generating recommendations…"):
             recs = recommend(selected_name, top_n=top_n)
 
-        st.dataframe(
-            recs,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "similarity": st.column_config.ProgressColumn(
-                    "Confidence", min_value=0.0, max_value=1.0, format="%.3f"
-                )
-            },
-        )
+        # Display recs as a grid of cards
+        cols_per_row = 3
+        for i in range(0, len(recs), cols_per_row):
+            cols = st.columns(cols_per_row)
+            for j in range(cols_per_row):
+                idx = i + j
+                if idx < len(recs):
+                    rec = recs.iloc[idx]
+                    with cols[j]:
+                        rec_poster, _, _ = fetch_media(rec['name'])
+                        rec_poster = rec_poster or "https://via.placeholder.com/300x450?text=No+Img"
+                        st.markdown(
+                            f"""
+                            <div class="rec-card">
+                                <img src="{rec_poster}" class="rec-img">
+                                <div class="rec-title">{html.escape(shorten_title(rec['name'], 30))}</div>
+                                <div style="display:flex; justify-content:space-between; margin:8px 0;">
+                                    <span>⭐ {rec['rating']:.2f}</span>
+                                    <span>{rec['type']}</span>
+                                </div>
+                                <div class="rec-similarity">✨ {rec['similarity']:.2f} match</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+                        if st.button("Select", key=f"select_rec_{idx}"):
+                            st.session_state.selected_anime = rec['name']
+                            st.rerun()
 
 
 # -----------------------------
-# Dashboard / EDA tab
+# Tab 2: Dashboard (enhanced with wordcloud)
 # -----------------------------
 with tab2:
-    st.subheader("📊 Dashboard / EDA (Clean)")
-    st.caption(
-        f"Type: {', '.join(type_filter) if type_filter else 'All'} | "
-        f"Rating: {eda_min_rating:.1f}–{eda_max_rating:.1f}"
-    )
+    st.subheader("📊 Anime Analytics")
+    st.caption(f"Type: {', '.join(type_filter) if type_filter else 'All'} | Rating: {eda_min_rating:.1f}–{eda_max_rating:.1f}")
 
     total_anime = len(eda_df)
     avg_rating = pd.to_numeric(eda_df["rating"], errors="coerce").dropna().mean()
@@ -916,26 +760,15 @@ with tab2:
     g1, e1 = st.columns([3, 1])
     with g1:
         st.markdown("### Rating Distribution")
-        fig = plt.figure(figsize=(8, 4), facecolor='none')
-        ax = fig.add_subplot(111)
+        fig, ax = plt.subplots(facecolor='none')
         ax.set_facecolor('none')
-        sns.histplot(pd.to_numeric(eda_df["rating"], errors="coerce").dropna(), bins=20, kde=True, color='gold')
-        plt.xlabel("Rating", color='#b0b8cc')
-        plt.ylabel("Count", color='#b0b8cc')
-        plt.tick_params(colors='#b0b8cc')
-        plt.tight_layout()
+        sns.histplot(pd.to_numeric(eda_df["rating"], errors="coerce").dropna(), bins=20, kde=True, color='gold', ax=ax)
+        ax.set_xlabel("Rating", color='white')
+        ax.set_ylabel("Count", color='white')
+        ax.tick_params(colors='white')
         st.pyplot(fig)
-        plt.close()
     with e1:
-        st.markdown(
-            """
-            <div class="explain-box">
-              🌟 Shows how ratings are distributed.<br/>
-              The peak is the most common rating range.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="explain-box">🌟 Shows how ratings are distributed. The peak is the most common rating range.</div>', unsafe_allow_html=True)
 
     st.divider()
 
@@ -944,26 +777,15 @@ with tab2:
     with g2:
         st.markdown("### Average Rating by Type")
         temp = eda_df.dropna(subset=["rating"]).groupby("type")["rating"].mean().sort_values(ascending=False)
-        fig = plt.figure(figsize=(8, 4), facecolor='none')
-        ax = fig.add_subplot(111)
+        fig, ax = plt.subplots(facecolor='none')
         ax.set_facecolor('none')
-        plt.bar(temp.index.astype(str), temp.values, color='#ffb347', edgecolor='gold')
-        plt.xticks(rotation=35, ha="right", color='#b0b8cc')
-        plt.ylabel("Avg Rating", color='#b0b8cc')
-        plt.tick_params(colors='#b0b8cc')
-        plt.tight_layout()
+        ax.bar(temp.index.astype(str), temp.values, color='#ffb347', edgecolor='gold')
+        ax.set_xticklabels(temp.index, rotation=35, ha="right", color='white')
+        ax.set_ylabel("Avg Rating", color='white')
+        ax.tick_params(colors='white')
         st.pyplot(fig)
-        plt.close()
     with e2:
-        st.markdown(
-            """
-            <div class="explain-box">
-              📺 Compares average rating across formats.<br/>
-              Useful to justify type-wise differences.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="explain-box">📺 Compares average rating across formats. Useful to see which types are best rated.</div>', unsafe_allow_html=True)
 
     st.divider()
 
@@ -972,27 +794,16 @@ with tab2:
     with g3:
         st.markdown("### Rating vs Members (log scale)")
         temp = eda_df.dropna(subset=["rating", "members"]).copy()
-        fig = plt.figure(figsize=(8, 4), facecolor='none')
-        ax = fig.add_subplot(111)
+        fig, ax = plt.subplots(facecolor='none')
         ax.set_facecolor('none')
-        plt.scatter(temp["members"], temp["rating"], alpha=0.65, color='#6a5acd', edgecolor='white', s=30)
-        plt.xscale("log")
-        plt.xlabel("Members (log scale)", color='#b0b8cc')
-        plt.ylabel("Rating", color='#b0b8cc')
-        plt.tick_params(colors='#b0b8cc')
-        plt.tight_layout()
+        ax.scatter(temp["members"], temp["rating"], alpha=0.65, color='#6a5acd', edgecolor='white', s=30)
+        ax.set_xscale("log")
+        ax.set_xlabel("Members (log scale)", color='white')
+        ax.set_ylabel("Rating", color='white')
+        ax.tick_params(colors='white')
         st.pyplot(fig)
-        plt.close()
     with e3:
-        st.markdown(
-            """
-            <div class="explain-box">
-              📈 Shows popularity vs rating pattern.<br/>
-              Log scale helps compare small & huge anime.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="explain-box">📈 Shows popularity vs rating pattern. Log scale helps compare small & huge anime.</div>', unsafe_allow_html=True)
 
     st.divider()
 
@@ -1002,34 +813,23 @@ with tab2:
         st.markdown("### Correlation Heatmap")
         corr_df = eda_df[["rating", "members", "episodes"]].copy().dropna()
         if len(corr_df) >= 3:
-            fig = plt.figure(figsize=(6.5, 4), facecolor='none')
-            ax = fig.add_subplot(111)
+            fig, ax = plt.subplots(facecolor='none')
             ax.set_facecolor('none')
-            sns.heatmap(corr_df.corr(), annot=True, cmap="coolwarm", fmt=".2f", 
-                        cbar_kws={'label': 'Correlation'}, ax=ax)
-            plt.tight_layout()
+            sns.heatmap(corr_df.corr(), annot=True, cmap="coolwarm", fmt=".2f", cbar_kws={'label': 'Correlation'}, ax=ax)
+            ax.tick_params(colors='white')
             st.pyplot(fig)
-            plt.close()
         else:
             st.info("Not enough data after filtering to compute correlations.")
     with e4:
-        st.markdown(
-            """
-            <div class="explain-box">
-              🔗 Measures relationships between numeric fields.<br/>
-              Values near ±1 mean stronger association.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="explain-box">🔗 Measures relationships between numeric fields. Values near ±1 mean stronger association.</div>', unsafe_allow_html=True)
 
     st.divider()
 
-    # 5) Top Genres
+    # 5) Top Genres (now with word cloud)
     g5, e5 = st.columns([3, 1])
     with g5:
-        st.markdown("### Top Genres (Count)")
-        genres = (
+        st.markdown("### Genre Word Cloud")
+        genres_series = (
             eda_df["genre"]
             .fillna("")
             .astype(str)
@@ -1037,37 +837,69 @@ with tab2:
             .explode()
             .str.strip()
         )
-        genres = genres[genres != ""]
-        top_g = genres.value_counts().head(15)
-
-        if not top_g.empty:
-            fig = plt.figure(figsize=(8, 4), facecolor='none')
-            ax = fig.add_subplot(111)
-            ax.set_facecolor('none')
-            plt.barh(top_g.index[::-1], top_g.values[::-1], color='#77dd77', edgecolor='white')
-            plt.xlabel("Count", color='#b0b8cc')
-            plt.tick_params(colors='#b0b8cc')
-            plt.tight_layout()
+        genres_series = genres_series[genres_series != ""]
+        if not genres_series.empty:
+            wordcloud = WordCloud(
+                width=800, height=400,
+                background_color=None,
+                mode="RGBA",
+                colormap='viridis',
+                prefer_horizontal=0.5
+            ).generate(' '.join(genres_series))
+            fig, ax = plt.subplots(facecolor='none')
+            ax.imshow(wordcloud, interpolation='bilinear')
+            ax.axis("off")
             st.pyplot(fig)
-            plt.close()
         else:
             st.info("No genres available after filtering.")
     with e5:
-        st.markdown(
-            """
-            <div class="explain-box">
-              🎭 Shows most common genres in the dataset.<br/>
-              Helps explain dataset bias toward certain genres.
-            </div>
-            """,
-            unsafe_allow_html=True,
+        st.markdown('<div class="explain-box">🎭 Word cloud of most frequent genres. Bigger words appear more often.</div>', unsafe_allow_html=True)
+
+
+# -----------------------------
+# Tab 3: Genre Explorer (NEW)
+# -----------------------------
+with tab3:
+    st.subheader("🔍 Explore by Genre")
+    st.caption("Select multiple genres to discover top anime")
+
+    # Get all unique genres
+    all_genres = sorted(set(
+        genre.strip() for sublist in anime["genre"].dropna().str.split(',') for genre in sublist
+    ))
+
+    selected_genres = st.multiselect("Choose genres", all_genres, default=["Action", "Comedy"])
+
+    if selected_genres:
+        # Filter anime that contain ALL selected genres (strict) or ANY? Let's do ANY for broader results
+        mask = anime["genre"].apply(
+            lambda x: any(genre in str(x) for genre in selected_genres) if pd.notna(x) else False
         )
+        filtered = anime[mask].copy()
+        filtered = filtered.dropna(subset=["rating"]).sort_values("rating", ascending=False).head(20)
+
+        if not filtered.empty:
+            st.dataframe(
+                filtered[["name", "type", "rating", "members", "genre"]],
+                use_container_width=True,
+                hide_index=True
+            )
+            # Show a small bar chart of ratings
+            fig, ax = plt.subplots(figsize=(10, 5), facecolor='none')
+            ax.set_facecolor('none')
+            ax.barh(filtered["name"].apply(lambda x: shorten_title(x, 30)), filtered["rating"], color='gold')
+            ax.set_xlabel("Rating", color='white')
+            ax.tick_params(colors='white')
+            st.pyplot(fig)
+        else:
+            st.warning("No anime found with selected genres.")
+
 
 # -----------------------------
 # Footer
 # -----------------------------
 st.divider()
 st.markdown(
-    "<p style='text-align: center; color: #9ca3af;'>✨ crafted with 💜 for anime lovers • TF‑IDF + Cosine Similarity</p>",
+    "<p style='text-align: center; color: #9ca3af; font-size: 0.9rem;'>✨ crafted with 💜 for anime lovers • TF‑IDF + Cosine Similarity • now with extra sparkle ✨</p>",
     unsafe_allow_html=True,
 )
